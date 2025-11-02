@@ -1,0 +1,17 @@
+flex age: int = 18
+fixed first_name: str = "Juan"
+
+when age >= 18:
+    output("You are of legal age.")
+else:
+    output("You are a minor.")
+
+# This is a single line comment
+
+/*
+This is a multi-line comment.
+*/
+
+flex x = 10.5
+flex y = 20
+flex z = x + y * 2
