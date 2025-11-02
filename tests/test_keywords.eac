@@ -1,0 +1,38 @@
+# Test: All Keywords
+# This file tests all primary and type hint keywords
+
+# Primary Keywords - Variable Declaration
+flex variable = 10
+fixed constant = 20
+
+# Primary Keywords - Control Flow
+when variable > 0:
+    output("Positive")
+else:
+    output("Non-positive")
+
+# Primary Keywords - Loops
+while variable > 0:
+    variable -= 1
+
+for i in range(10):
+    when i == 5:
+        break
+    when i == 3:
+        continue
+    output(i)
+
+# Primary Keywords - Boolean Literals
+flex flag = true
+flex flag2 = false
+
+# Primary Keywords - Return
+when variable == 0:
+    return
+
+# Type Hint Keywords
+flex num: int = 42
+flex decimal: float = 3.14
+flex text: str = "hello"
+flex boolean: bool = true
+

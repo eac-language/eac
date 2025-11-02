@@ -1,0 +1,24 @@
+# Test: Comments
+# This file tests both single-line and multi-line comments
+
+# This is a single-line comment
+flex x = 10  # Inline comment
+
+/*
+ * This is a multi-line comment
+ * It spans multiple lines
+ * And should be completely ignored by the lexer
+ */
+
+flex y = 20
+
+/* Another block comment */
+
+/*
+Nested content:
+    when true:
+        output("This is inside a comment")
+*/
+
+flex z = x + y  # Final inline comment
+

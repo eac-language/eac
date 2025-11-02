@@ -1,0 +1,21 @@
+# Test: Indentation Tracking (INDENT/DEDENT)
+# This file specifically tests Python-style indentation handling
+
+flex x = 10
+
+when x > 5:
+    output("Level 1")
+    when x > 7:
+        output("Level 2")
+        when x > 9:
+            output("Level 3")
+    output("Back to Level 1")
+
+output("Back to Level 0")
+
+while x > 0:
+    output(x)
+    x -= 1
+
+output("Done")
+
