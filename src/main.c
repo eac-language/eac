@@ -328,16 +328,17 @@ int main(int argc, char* argv[]) {
     
     const char* sourcePath = argv[1];
     
-    // Generate output filename
-    char* outputPath = generateOutputFilename(sourcePath);
-    if (outputPath == NULL) {
+    // Create output directory
+    if (!createDirectory("output")) {
         return 1;
     }
+    
+    // Set output filename
+    const char* outputPath = "output/symbol_table.txt";
     
     // Read source file
     char* source = readFile(sourcePath);
     if (source == NULL) {
-        free(outputPath);
         return 1;
     }
     
@@ -346,7 +347,6 @@ int main(int argc, char* argv[]) {
     if (lexer == NULL) {
         fprintf(stderr, "Error: Failed to initialize lexer.\n");
         free(source);
-        free(outputPath);
         return 1;
     }
     
@@ -356,7 +356,6 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Error: Could not create output file '%s'.\n", outputPath);
         freeLexer(lexer);
         free(source);
-        free(outputPath);
         return 1;
     }
     
@@ -399,7 +398,6 @@ int main(int argc, char* argv[]) {
     fclose(outFile);
     freeLexer(lexer);
     free(source);
-    free(outputPath);
     
     return hasErrors ? 1 : 0;
 }

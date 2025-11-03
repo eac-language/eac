@@ -1,0 +1,14 @@
+If (k = 5)
+ Print .......
+
+Lexeme 					token
+If						if
+Print	
++
+-
+*
+/
+Mod
+Div
+**
+^					p
