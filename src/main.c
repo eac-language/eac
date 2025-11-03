@@ -23,81 +23,81 @@
 const char* getTokenTypeName(TokenType type) {
     switch (type) {
         // Lifecycle
-        case TOKEN_EOF:              return "eof";
-        case TOKEN_ERROR:            return "error";
+        case TOKEN_EOF:              return "EOF";
+        case TOKEN_ERROR:            return "ERROR";
         
         // Whitespace & Structural
-        case TOKEN_NEWLINE:          return "newline";
-        case TOKEN_INDENT:           return "indent";
-        case TOKEN_DEDENT:           return "dedent";
+        case TOKEN_NEWLINE:          return "NEWLINE";
+        case TOKEN_INDENT:           return "INDENT";
+        case TOKEN_DEDENT:           return "DEDENT";
         
         // Literals
-        case TOKEN_IDENTIFIER:       return "identifier";
-        case TOKEN_INTEGER:          return "integer";
-        case TOKEN_FLOAT:            return "float";
-        case TOKEN_STRING:           return "string";
+        case TOKEN_IDENTIFIER:       return "IDENTIFIER";
+        case TOKEN_INTEGER:          return "INTEGER";
+        case TOKEN_FLOAT:            return "FLOAT";
+        case TOKEN_STRING:           return "STRING";
         
         // Primary Keywords
-        case TOKEN_FLEX:             return "keyword";
-        case TOKEN_FIXED:            return "keyword";
-        case TOKEN_WHEN:             return "keyword";
-        case TOKEN_ELSE:             return "keyword";
-        case TOKEN_OUTPUT:           return "keyword";
-        case TOKEN_WHILE:            return "keyword";
-        case TOKEN_FOR:              return "keyword";
-        case TOKEN_IN:               return "keyword";
-        case TOKEN_BREAK:            return "keyword";
-        case TOKEN_CONTINUE:         return "keyword";
-        case TOKEN_RETURN:           return "keyword";
-        case TOKEN_TRUE:             return "keyword";
-        case TOKEN_FALSE:            return "keyword";
+        case TOKEN_FLEX:             return "KEYWORD";
+        case TOKEN_FIXED:            return "KEYWORD";
+        case TOKEN_WHEN:             return "KEYWORD";
+        case TOKEN_ELSE:             return "KEYWORD";
+        case TOKEN_OUTPUT:           return "KEYWORD";
+        case TOKEN_WHILE:            return "KEYWORD";
+        case TOKEN_FOR:              return "KEYWORD";
+        case TOKEN_IN:               return "KEYWORD";
+        case TOKEN_BREAK:            return "KEYWORD";
+        case TOKEN_CONTINUE:         return "KEYWORD";
+        case TOKEN_RETURN:           return "KEYWORD";
+        case TOKEN_TRUE:             return "KEYWORD";
+        case TOKEN_FALSE:            return "KEYWORD";
         
         // Type Hint Keywords
-        case TOKEN_HINT_INT:         return "keyword";
-        case TOKEN_HINT_FLOAT:       return "keyword";
-        case TOKEN_HINT_STR:         return "keyword";
-        case TOKEN_HINT_BOOL:        return "keyword";
+        case TOKEN_HINT_INT:         return "HINT_KEYWORD";
+        case TOKEN_HINT_FLOAT:       return "HINT_KEYWORD";
+        case TOKEN_HINT_STR:         return "HINT_KEYWORD";
+        case TOKEN_HINT_BOOL:        return "HINT_KEYWORD";
         
         // Arithmetic Operators
-        case TOKEN_PLUS:             return "arithmetic";
-        case TOKEN_MINUS:            return "arithmetic";
-        case TOKEN_STAR:             return "arithmetic";
-        case TOKEN_SLASH:            return "arithmetic";
-        case TOKEN_PERCENT:          return "arithmetic";
-        case TOKEN_CARET:            return "arithmetic";
-        case TOKEN_VBAR:             return "arithmetic";
+        case TOKEN_PLUS:             return "ARITHMETIC";
+        case TOKEN_MINUS:            return "ARITHMETIC";
+        case TOKEN_STAR:             return "ARITHMETIC";
+        case TOKEN_SLASH:            return "ARITHMETIC";
+        case TOKEN_PERCENT:          return "ARITHMETIC";
+        case TOKEN_CARET:            return "ARITHMETIC";
+        case TOKEN_VBAR:             return "ARITHMETIC";
         
         // Relational & Equality
-        case TOKEN_LESS:             return "relational";
-        case TOKEN_GREATER:          return "relational";
-        case TOKEN_EQUAL_EQUAL:      return "relational";
-        case TOKEN_LESS_EQUAL:       return "relational";
-        case TOKEN_GREATER_EQUAL:    return "relational";
-        case TOKEN_BANG_EQUAL:       return "relational";
+        case TOKEN_LESS:             return "RELATIONAL";
+        case TOKEN_GREATER:          return "RELATIONAL";
+        case TOKEN_EQUAL_EQUAL:      return "RELATIONAL";
+        case TOKEN_LESS_EQUAL:       return "RELATIONAL";
+        case TOKEN_GREATER_EQUAL:    return "RELATIONAL";
+        case TOKEN_BANG_EQUAL:       return "RELATIONAL";
         
         // Logical Operators
-        case TOKEN_AND:              return "logical";
-        case TOKEN_OR:               return "logical";
-        case TOKEN_NOT:              return "logical";
+        case TOKEN_AND:              return "LOGICAL";
+        case TOKEN_OR:               return "LOGICAL";
+        case TOKEN_NOT:              return "LOGICAL";
         
         // Assignment Operators
-        case TOKEN_EQUAL:            return "arithmetic";
-        case TOKEN_PLUS_EQUAL:       return "arithmetic";
-        case TOKEN_MINUS_EQUAL:      return "arithmetic";
-        case TOKEN_STAR_EQUAL:       return "arithmetic";
-        case TOKEN_SLASH_EQUAL:      return "arithmetic";
-        case TOKEN_PERCENT_EQUAL:    return "arithmetic";
+        case TOKEN_EQUAL:            return "ASSIGNMENT";
+        case TOKEN_PLUS_EQUAL:       return "ASSIGNMENT";
+        case TOKEN_MINUS_EQUAL:      return "ASSIGNMENT";
+        case TOKEN_STAR_EQUAL:       return "ASSIGNMENT";
+        case TOKEN_SLASH_EQUAL:      return "ASSIGNMENT";
+        case TOKEN_PERCENT_EQUAL:    return "ASSIGNMENT";
         
         // Delimiters
-        case TOKEN_LPAREN:           return "delimiter";
-        case TOKEN_RPAREN:           return "delimiter";
-        case TOKEN_LBRACKET:         return "delimiter";
-        case TOKEN_RBRACKET:         return "delimiter";
-        case TOKEN_COLON:            return "delimiter";
-        case TOKEN_COMMA:            return "delimiter";
-        case TOKEN_DOT:              return "delimiter";
+        case TOKEN_LPAREN:           return "DELIMITER";
+        case TOKEN_RPAREN:           return "DELIMITER";
+        case TOKEN_LBRACKET:         return "DELIMITER";
+        case TOKEN_RBRACKET:         return "DELIMITER";
+        case TOKEN_COLON:            return "DELIMITER";
+        case TOKEN_COMMA:            return "DELIMITER";
+        case TOKEN_DOT:              return "DELIMITER";
         
-        default:                     return "unknown";
+        default:                     return "UNKNOWN";
     }
 }
 
@@ -106,72 +106,82 @@ const char* getTokenTypeName(TokenType type) {
  */
 const char* getTokenSpecial(TokenType type) {
     switch (type) {
-        case TOKEN_IDENTIFIER:       return "identifier";
-        case TOKEN_INTEGER:          return "integer";
-        case TOKEN_FLOAT:            return "float";
-        case TOKEN_STRING:           return "string";
+        // Lifecycle
+        case TOKEN_EOF:              return "EOF";
+        case TOKEN_ERROR:            return "ERROR";
         
-        // Keywords
-        case TOKEN_FLEX:             return "flex";
-        case TOKEN_FIXED:            return "fixed";
-        case TOKEN_WHEN:             return "when";
-        case TOKEN_ELSE:             return "else";
-        case TOKEN_OUTPUT:           return "output";
-        case TOKEN_WHILE:            return "while";
-        case TOKEN_FOR:              return "for";
-        case TOKEN_IN:               return "in";
-        case TOKEN_BREAK:            return "break";
-        case TOKEN_CONTINUE:         return "continue";
-        case TOKEN_RETURN:           return "return";
-        case TOKEN_TRUE:             return "true";
-        case TOKEN_FALSE:            return "false";
+        // Whitespace & Structural
+        case TOKEN_NEWLINE:          return "NEWLINE";
+        case TOKEN_INDENT:           return "INDENT";
+        case TOKEN_DEDENT:           return "DEDENT";
         
-        // Type hints
-        case TOKEN_HINT_INT:         return "int";
-        case TOKEN_HINT_FLOAT:       return "float";
-        case TOKEN_HINT_STR:         return "str";
-        case TOKEN_HINT_BOOL:        return "bool";
+        // Literals
+        case TOKEN_IDENTIFIER:       return "IDENTIFIER";
+        case TOKEN_INTEGER:          return "INTEGER";
+        case TOKEN_FLOAT:            return "FLOAT";
+        case TOKEN_STRING:           return "STRING";
         
-        // Operators
-        case TOKEN_PLUS:             return "add";
-        case TOKEN_MINUS:            return "subtract";
-        case TOKEN_STAR:             return "multiply";
-        case TOKEN_SLASH:            return "divide";
-        case TOKEN_PERCENT:          return "modulo";
-        case TOKEN_CARET:            return "power";
-        case TOKEN_VBAR:             return "pipe";
+        // Primary Keywords
+        case TOKEN_FLEX:             return "FLEX";
+        case TOKEN_FIXED:            return "FIXED";
+        case TOKEN_WHEN:             return "WHEN";
+        case TOKEN_ELSE:             return "ELSE";
+        case TOKEN_OUTPUT:           return "OUTPUT";
+        case TOKEN_WHILE:            return "WHILE";
+        case TOKEN_FOR:              return "FOR";
+        case TOKEN_IN:               return "IN";
+        case TOKEN_BREAK:            return "BREAK";
+        case TOKEN_CONTINUE:         return "CONTINUE";
+        case TOKEN_RETURN:           return "RETURN";
+        case TOKEN_TRUE:             return "TRUE";
+        case TOKEN_FALSE:            return "FALSE";
         
-        case TOKEN_LESS:             return "less_than";
-        case TOKEN_GREATER:          return "greater_than";
-        case TOKEN_EQUAL_EQUAL:      return "equal";
-        case TOKEN_LESS_EQUAL:       return "less_equal";
-        case TOKEN_GREATER_EQUAL:    return "greater_equal";
-        case TOKEN_BANG_EQUAL:       return "not_equal";
+        // Type Hint Keywords
+        case TOKEN_HINT_INT:         return "HINT_INT";
+        case TOKEN_HINT_FLOAT:       return "HINT_FLOAT";
+        case TOKEN_HINT_STR:         return "HINT_STR";
+        case TOKEN_HINT_BOOL:        return "HINT_BOOL";
         
-        case TOKEN_AND:              return "and";
-        case TOKEN_OR:               return "or";
-        case TOKEN_NOT:              return "not";
+        // Arithmetic Operators
+        case TOKEN_PLUS:             return "PLUS";
+        case TOKEN_MINUS:            return "MINUS";
+        case TOKEN_STAR:             return "STAR";
+        case TOKEN_SLASH:            return "SLASH";
+        case TOKEN_PERCENT:          return "PERCENT";
+        case TOKEN_CARET:            return "CARET";
+        case TOKEN_VBAR:             return "VBAR";
         
-        case TOKEN_EQUAL:            return "assignment";
-        case TOKEN_PLUS_EQUAL:       return "add_assign";
-        case TOKEN_MINUS_EQUAL:      return "sub_assign";
-        case TOKEN_STAR_EQUAL:       return "mul_assign";
-        case TOKEN_SLASH_EQUAL:      return "div_assign";
-        case TOKEN_PERCENT_EQUAL:    return "mod_assign";
+        // Relational & Equality
+        case TOKEN_LESS:             return "LESS";
+        case TOKEN_GREATER:          return "GREATER";
+        case TOKEN_EQUAL_EQUAL:      return "EQUAL_EQUAL";
+        case TOKEN_LESS_EQUAL:       return "LESS_EQUAL";
+        case TOKEN_GREATER_EQUAL:    return "GREATER_EQUAL";
+        case TOKEN_BANG_EQUAL:       return "BANG_EQUAL";
         
-        case TOKEN_LPAREN:           return "left_paren";
-        case TOKEN_RPAREN:           return "right_paren";
-        case TOKEN_LBRACKET:         return "left_bracket";
-        case TOKEN_RBRACKET:         return "right_bracket";
-        case TOKEN_COLON:            return "colon";
-        case TOKEN_COMMA:            return "comma";
-        case TOKEN_DOT:              return "dot";
+        // Logical Operators
+        case TOKEN_AND:              return "AND";
+        case TOKEN_OR:               return "OR";
+        case TOKEN_NOT:              return "NOT";
         
-        case TOKEN_NEWLINE:          return "newline";
-        case TOKEN_INDENT:           return "indent";
-        case TOKEN_DEDENT:           return "dedent";
+        // Assignment Operators
+        case TOKEN_EQUAL:            return "EQUAL";
+        case TOKEN_PLUS_EQUAL:       return "PLUS_EQUAL";
+        case TOKEN_MINUS_EQUAL:      return "MINUS_EQUAL";
+        case TOKEN_STAR_EQUAL:       return "STAR_EQUAL";
+        case TOKEN_SLASH_EQUAL:      return "SLASH_EQUAL";
+        case TOKEN_PERCENT_EQUAL:    return "PERCENT_EQUAL";
         
-        default:                     return "";
+        // Delimiters
+        case TOKEN_LPAREN:           return "LPAREN";
+        case TOKEN_RPAREN:           return "RPAREN";
+        case TOKEN_LBRACKET:         return "LBRACKET";
+        case TOKEN_RBRACKET:         return "RBRACKET";
+        case TOKEN_COLON:            return "COLON";
+        case TOKEN_COMMA:            return "COMMA";
+        case TOKEN_DOT:              return "DOT";
+        
+        default:                     return "UNKNOWN";
     }
 }
 
