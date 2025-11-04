@@ -383,3 +383,63 @@ flex not_result8 = not flag1
 flex not_result9 = not flag2
 flex not_result10 = not flag3
 
+
+flex num1: int = 1
+flex num2: int = 2
+flex num3: int = 3
+flex num4: int = 4
+flex num5: int = 5
+flex num6: int = 6
+flex num7: int = 7
+flex num8: int = 8
+flex num9: int = 9
+flex num10: int = 10
+
+
+flex dec1: float = 1.1
+flex dec2: float = 2.2
+flex dec3: float = 3.3
+flex dec4: float = 4.4
+flex dec5: float = 5.5
+flex dec6: float = 6.6
+flex dec7: float = 7.7
+flex dec8: float = 8.8
+flex dec9: float = 9.9
+flex dec10: float = 10.10
+
+
+flex text1: str = "text1"
+flex text2: str = "text2"
+flex text3: str = "text3"
+flex text4: str = "text4"
+flex text5: str = "text5"
+flex text6: str = "text6"
+flex text7: str = "text7"
+flex text8: str = "text8"
+flex text9: str = "text9"
+flex text10: str = "text10"
+
+
+flex boolean1: bool = true
+flex boolean2: bool = false
+flex boolean3: bool = true
+flex boolean4: bool = false
+flex boolean5: bool = true
+flex boolean6: bool = false
+flex boolean7: bool = true
+flex boolean8: bool = false
+flex boolean9: bool = true
+flex boolean10: bool = false
+
+
+flex char1: char = 'a'
+flex char2: char = 'b'
+flex char3: char = 'c'
+flex char4: char = 'd'
+flex char5: char = 'e'
+flex char6: char = 'f'
+flex char7: char = 'g'
+flex char8: char = 'h'
+flex char9: char = 'i'
+flex char10: char = 'j'
+

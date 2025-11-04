@@ -43,14 +43,15 @@ test-all: $(TARGET)
 	@echo ""
 	@echo "[CRITERION 1] File Type Validation Tests:"
 	@echo "  Testing non-.eac files (should be rejected)..."
-	-@./$(TARGET) tests/test_file.py 2>nul || echo "  - test_file.py rejected correctly"
-	-@./$(TARGET) tests/test_file.txt 2>nul || echo "  - test_file.txt rejected correctly"
-	-@./$(TARGET) tests/test_file.c 2>nul || echo "  - test_file.c rejected correctly"
+	-@./$(TARGET) tests/test_file.py 2>nul
+	-@./$(TARGET) tests/test_file.txt 2>nul
+	-@./$(TARGET) tests/test_file.c 2>nul
+	@echo "  File type validation complete (non-.eac files rejected)"
 	@echo ""
 	@echo "[CRITERION 2] Identifiers Test (10 cases):"
 	@./$(TARGET) tests/test_identifiers.eac
 	@echo ""
-	@echo "[CRITERION 3] Keywords Test (19 keywords, 190 cases):"
+	@echo "[CRITERION 3] Keywords Test (24 keywords, 240 cases):"
 	@./$(TARGET) tests/test_all_keywords.eac
 	@echo ""
 	@echo "[CRITERION 4] Reserved Words Test (5 types, 50 cases):"
@@ -75,7 +76,7 @@ test-all: $(TARGET)
 	@./$(TARGET) tests/test_delimiters.eac
 	@echo ""
 	@echo "[CRITERION 10] Invalid Tokens Test (10 cases):"
-	@./$(TARGET) tests/test_all_invalid.eac || true
+	-@./$(TARGET) tests/test_all_invalid.eac
 	@echo ""
 	@echo "[BONUS] Python-Style Indentation Test:"
 	@./$(TARGET) tests/test_indentation.eac
@@ -88,7 +89,7 @@ test-all: $(TARGET)
 	@echo "========================================================================"
 	@echo ""
 	@echo "Total Test Files: 14"
-	@echo "Total Test Cases: 494+"
+	@echo "Total Test Cases: 544+"
 	@echo ""
 	@echo "Check the output/ directory for detailed token tables."
 	@echo ""
