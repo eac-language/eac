@@ -52,13 +52,19 @@ test-all: $(TARGET)
 	@./$(TARGET) tests/test_keywords.eac
 	@echo ""
 	@echo "[5] Comments Test:"
-@./$(TARGET) tests/test_comments.eac
+	@./$(TARGET) tests/test_comments.eac
 	@echo ""
 	@echo "[6] Literals Test:"
 	@./$(TARGET) tests/test_literals.eac
-@echo ""
-@echo "[7] Invalid Tokens Test:"
-@./$(TARGET) tests/test_invalid.eac || true
+	@echo ""
+	@echo "[7] Invalid Tokens Test:"
+	@./$(TARGET) tests/test_invalid.eac || true
+
+TARGET_BIN := $(TARGET)$(EXEEXT)
+OBJ_CLEAN := $(subst /,\,$(OBJ))
 
 clean:
-	rm -f $(TARGET) $(OBJ)
+	@if exist $(TARGET_BIN) del /f /q $(TARGET_BIN) >nul 2>&1
+	@if exist $(TARGET) del /f /q $(TARGET) >nul 2>&1
+	@if not "$(OBJ_CLEAN)"=="" del /f /q $(OBJ_CLEAN) >nul 2>&1
+	@if exist output rmdir /s /q output >nul 2>&1

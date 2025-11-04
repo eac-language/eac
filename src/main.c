@@ -297,28 +297,35 @@ char* generateOutputFilename(const char* inputPath) {
         return NULL;
     }
     
-    // Build output path
+    const char* prefix = "output/symbol_table_";
+    size_t prefixLen = strlen(prefix);
+    const char* suffix = ".txt";
+    size_t suffixLen = strlen(suffix);
+
     char* output;
     if (len > 4 && strcmp(filename + len - 4, ".eac") == 0) {
-        output = (char*)malloc(strlen("output/") + len + 1);
+        size_t stemLen = len - 4; // exclude .eac
+        output = (char*)malloc(prefixLen + stemLen + suffixLen + 1);
         if (output == NULL) {
             fprintf(stderr, "Error: Memory allocation failed.\n");
             return NULL;
         }
-        strcpy(output, "output/");
-        strcat(output, filename);
-        strcpy(output + strlen("output/") + len - 4, ".txt");
+        memcpy(output, prefix, prefixLen);
+        memcpy(output + prefixLen, filename, stemLen);
+        memcpy(output + prefixLen + stemLen, suffix, suffixLen);
+        output[prefixLen + stemLen + suffixLen] = '\0';
     } else {
-        output = (char*)malloc(strlen("output/") + len + 5);
+        output = (char*)malloc(prefixLen + len + suffixLen + 1);
         if (output == NULL) {
             fprintf(stderr, "Error: Memory allocation failed.\n");
             return NULL;
         }
-        strcpy(output, "output/");
-        strcat(output, filename);
-        strcat(output, ".txt");
+        memcpy(output, prefix, prefixLen);
+        memcpy(output + prefixLen, filename, len);
+        memcpy(output + prefixLen + len, suffix, suffixLen);
+        output[prefixLen + len + suffixLen] = '\0';
     }
-    
+
     return output;
 }
 
@@ -388,11 +395,16 @@ int main(int argc, char* argv[]) {
     }
     
     // Set output filename
-    const char* outputPath = "output/symbol_table.txt";
+    char* outputPath = generateOutputFilename(sourcePath);
+    if (outputPath == NULL) {
+        free(source);
+        return 1;
+    }
     
     // Read source file
     char* source = readFile(sourcePath);
     if (source == NULL) {
+        free(outputPath);
         return 1;
     }
     
@@ -410,6 +422,7 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Error: Could not create output file '%s'.\n", outputPath);
         freeLexer(lexer);
         free(source);
+        free(outputPath);
         return 1;
     }
     
@@ -452,6 +465,7 @@ int main(int argc, char* argv[]) {
     fclose(outFile);
     freeLexer(lexer);
     free(source);
+    free(outputPath);
     
     return hasErrors ? 1 : 0;
 }
