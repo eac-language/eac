@@ -142,6 +142,12 @@ Keywords are predefined words with special meanings.
     * **Machine**: q0 → e → q1 → l → q2 → s → q3 → e → q4 (final)  
   * output: Built-in function to print to the console.  
     * **Machine**: q0 → o → q1 → u → q2 → t → q3 → p → q4 → u → q5 → t → q6 (final)  
+  * function: Declares a function block.  
+    * **Machine**: q0 → f → q1 → u → q2 → n → q3 → c → q4 → t → q5 → i → q6 → o → q7 → n → q8 (final)  
+  * import: Starts a module import declaration.  
+    * **Machine**: q0 → i → q1 → m → q2 → p → q3 → o → q4 → r → q5 → t → q6 (final)  
+  * from: Specifies the source in an import declaration.  
+    * **Machine**: q0 → f → q1 → r → q2 → o → q3 → m → q4 (final)  
   * while: Begins a while-loop.  
     * **Machine**: q0 → w → q1 → h → q2 → i → q3 → l → q4 → e → q5 (final)  
   * for: Begins a for-loop (typically with in).  
@@ -157,7 +163,13 @@ Keywords are predefined words with special meanings.
   * true: Boolean true value.  
     * **Machine**: q0 → t → q1 → r → q2 → u → q3 → e → q4 (final)  
   * false: Boolean false value.  
-    * **Machine**: q0 → f → q1 → a → q2 → l → q3 → s → q4 → e → q5 (final)
+    * **Machine**: q0 → f → q1 → a → q2 → l → q3 → s → q4 → e → q5 (final)  
+  * and: Logical conjunction operator treated as a keyword.  
+    * **Machine**: q0 → a → q1 → n → q2 → d → q3 (final)  
+  * or: Logical disjunction operator treated as a keyword.  
+    * **Machine**: q0 → o → q1 → r → q2 (final)  
+  * not: Logical negation operator treated as a keyword.  
+    * **Machine**: q0 → n → q1 → o → q2 → t → q3 (final)
 
 
 * **4.b. Optional Type-Hint Keywords (Reserved Words)** These words are reserved for use as *optional* type hints in variable declarations. They do not affect the dynamic typing but improve code clarity.  
@@ -170,14 +182,16 @@ Keywords are predefined words with special meanings.
     * **Machine**: q0 → s → q1 → t → q2 → r → q3 (final)  
   * bool:  
     * **Machine**: q0 → b → q1 → o → q2 → o → q3 → l → q4 (final)
+  * char:  
+    * **Machine**: q0 → c → q1 → h → q2 → a → q3 → r → q4 (final)
 
-#### **5\. Noise Words**
+#### **5. Noise Words**
 
-EaC **does not support noise words**. All keywords are significant and have a specific purpose in the syntax. This maintains clarity and avoids ambiguity.
+EaC recognises a small set of “polite” noise words that are tokenised but have no effect on program semantics. These words are currently `please`, `kindly`, and `maybe`; they allow more conversational code without confusing the lexer.
 
 #### **6\. Comments**
 
-Comments are used for notes and are ignored by the compiler.
+Comments are recognised by the lexer and emitted as tokens, allowing tooling to inspect or preserve them while later compilation phases may ignore them for execution.
 
 * **Single-line comments**: Start with \# and extend to the end of the line.  
   * *Example*: flex x \= 10 \# This is a comment  
