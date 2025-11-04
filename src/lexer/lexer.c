@@ -449,7 +449,6 @@ static Token scanToken(Lexer* lexer) {
         // Newline
         case '\n':
             lexer->line++;
-            lexer->needsNewline = true;
             lexer->atLineStart = true;
             return syntheticToken(lexer, TOKEN_NEWLINE);
         
