@@ -7,7 +7,9 @@
 - **Dynamic Typing**: Variable types inferred at runtime
 - **Clean Syntax**: Python-inspired with significant whitespace
 - **C-Based Operators**: Familiar operators from C
-- **Simple Keywords**: `flex`, `fixed`, `when`, `output`, etc.
+- **Simple Keywords**: 23 built-ins including `flex`, `fixed`, `when`, `output`, `function`, `import`, `from`
+- **Noise Word Handling**: Recognizes and labels benign words like `please`, `kindly`, `maybe`
+- **Extended Literals**: Integers, floats, strings, characters, and booleans
 - **Type Hints**: Optional type annotations for clarity
 
 ## Project Status
@@ -16,6 +18,35 @@
 - **Parser**: Coming soon  
 - **Semantic Analyzer**: Coming soon  
 - **Code Generator**: Coming soon
+
+## Project Structure
+
+```
+eac/
+├── src/
+│   ├── common/
+│   │   └── token.h          # Token definitions
+│   ├── lexer/
+│   │   ├── lexer.h          # Lexer interface
+│   │   └── lexer.c          # Lexer implementation
+│   ├── parser/              # Parser (coming soon)
+│   ├── semantic/            # Semantic analyzer (coming soon)
+│   └── main.c               # Test harness
+├── tests/
+│   ├── test.eac             # Comprehensive test suite
+│   ├── test_indentation.eac # Indentation tracking tests
+│   ├── test_operators.eac   # All operators tests
+│   ├── test_keywords.eac    # All keywords tests
+│   ├── test_comments.eac    # Comment handling tests
+│   └── test_literals.eac    # All literal types tests
+├── docs/
+│   ├── documentation.md     # Complete language specification
+│   ├── QUICK_START.md       # Getting started guide
+│   ├── SAMPLE_OUTPUT.md     # Example lexer output
+│   └── ARCHITECTURE.md      # System architecture
+├── Makefile                 # Build configuration
+└── README.md                # This file
+```
 
 ## Installation & Setup (Windows)
 
@@ -69,14 +100,7 @@ git clone https://github.com/eac-language/eac.git
 cd eac
 git checkout dev
 
-# Build the project
-make all
-
-# Run all tests
-make test-all
 ```
-
-You should now see all test cases running successfully!
 
 ### Troubleshooting Windows Setup
 
@@ -95,6 +119,11 @@ You should now see all test cases running successfully!
 
 ## Quick Start
 
+### Compile
+```bash
+make all
+```
+
 ### Run Tests
 
 ```bash
@@ -110,6 +139,8 @@ make test-all
 ```
 
 ### Test Your Own Code
+
+- Only `.eac` source files are accepted by the lexer (validation happens before tokenization)
 
 ```bash
 ./eac your_file.eac
@@ -152,34 +183,6 @@ for i in range(10):
 - **[Sample Output](docs/SAMPLE_OUTPUT.md)** - See what the lexer produces
 - **[Architecture](docs/ARCHITECTURE.md)** - System design and implementation details
 
-## Project Structure
-
-```
-eac/
-├── src/
-│   ├── common/
-│   │   └── token.h          # Token definitions
-│   ├── lexer/
-│   │   ├── lexer.h          # Lexer interface
-│   │   └── lexer.c          # Lexer implementation
-│   ├── parser/              # Parser (coming soon)
-│   ├── semantic/            # Semantic analyzer (coming soon)
-│   └── main.c               # Test harness
-├── tests/
-│   ├── test.eac             # Comprehensive test suite
-│   ├── test_indentation.eac # Indentation tracking tests
-│   ├── test_operators.eac   # All operators tests
-│   ├── test_keywords.eac    # All keywords tests
-│   ├── test_comments.eac    # Comment handling tests
-│   └── test_literals.eac    # All literal types tests
-├── docs/
-│   ├── documentation.md     # Complete language specification
-│   ├── QUICK_START.md       # Getting started guide
-│   ├── SAMPLE_OUTPUT.md     # Example lexer output
-│   └── ARCHITECTURE.md      # System architecture
-├── Makefile                 # Build configuration
-└── README.md                # This file
-```
 
 ## Lexical Analyzer Features
 
@@ -187,27 +190,12 @@ The refactored lexer includes:
 
 - **Full Indentation Tracking** - INDENT/DEDENT tokens for Python-style blocks  
 - **Comprehensive Token Set** - All operators, keywords, and literals  
-- **Comment Support** - Single-line (#) and multi-line (/* */)  
+- **Comment Tokens** - Single-line (#) and multi-line (/* */) emitted as COMMENT tokens  
 - **Error Detection** - Detailed error messages with line numbers  
 - **DRY Architecture** - Keyword lookup table for maintainability  
 - **Opaque Pointer API** - Clean, encapsulated interface  
 - **Zero-Copy Design** - Efficient token processing  
 
-## Building from Source
-
-### Using Make (Recommended)
-
-```bash
-# Build the project
-make all
-
-# Clean build artifacts
-make clean
-
-# Run tests
-make test
-make test-all
-```
 
 ### Using GCC Directly
 
@@ -225,28 +213,32 @@ The project includes comprehensive test suites:
 | `test_indentation.eac` | Indentation tracking |
 | `test_operators.eac` | All operators |
 | `test_keywords.eac` | All keywords |
-| `test_comments.eac` | Comment handling |
+| `test_comments.eac` | Comment recognition, delimiters, and noise words |
 | `test_literals.eac` | All literal types |
-
-Run any test:
-```bash
-./eac tests/test_indentation.eac
-```
+| `test_invalid.eac` | Invalid lexemes and error handling |
 
 ## Language Highlights
 
-### Keywords
-- **Variables**: `flex` (mutable), `fixed` (immutable)
-- **Control Flow**: `when`, `else`, `while`, `for`, `in`
+### Keywords (23 total)
+- **Variables & Flow**: `flex`, `fixed`, `when`, `else`, `while`, `for`, `in`
 - **Loop Control**: `break`, `continue`, `return`
-- **Literals**: `true`, `false`
-- **Type Hints**: `int`, `float`, `str`, `bool`
+- **IO & Structure**: `output`, `function`
+- **Modules**: `import`, `from`
+- **Truth Values**: `true`, `false`
+- **Logical Operators**: `and`, `or`, `not`
+
+### Reserved Words (Type Hints)
+- `int`, `float`, `str`, `bool`, `char`
+
+### Noise Words
+- Recognized but semantically ignored: `please`, `kindly`, `maybe`
 
 ### Operators
-- **Arithmetic**: `+`, `-`, `*`, `/`, `%`, `^`, `|`
-- **Relational**: `<`, `>`, `<=`, `>=`, `==`, `!=`
-- **Logical**: `and`, `or`, `not`
-- **Assignment**: `=`, `+=`, `-=`, `*=`, `/=`, `%=`
+- **Arithmetic (7)**: `+`, `-`, `*`, `/`, `%`, `^`, `|`
+- **Relational (6)**: `<`, `>`, `<=`, `>=`, `==`, `!=`
+- **Logical (3)**: `and`, `or`, `not`
+- **Assignment (6)**: `=`, `+=`, `-=`, `*=`, `/=`, `%=`
+- **Delimiters & Punctuation (7)**: `(`, `)`, `[`, `]`, `:`, `,`, `.`
 
 ## Contributing
 
@@ -293,7 +285,7 @@ We welcome contributions! If you find bugs or have improvements to suggest:
 - Ensure all existing tests pass
 - Keep commits focused and well-described
 
-This is an academic/educational project implementing a programming lan from scratch. The focus is on clean, well-documented code following compiler design best practices.
+This is an academic/educational project implementing a programming language from scratch. The focus is on clean, well-documented code following compiler design best practices.
 
 ## License
 
