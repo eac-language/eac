@@ -397,7 +397,6 @@ int main(int argc, char* argv[]) {
     // Set output filename
     char* outputPath = generateOutputFilename(sourcePath);
     if (outputPath == NULL) {
-        free(source);
         return 1;
     }
     
