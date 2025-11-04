@@ -1,305 +1,254 @@
-# EaC (easy) Programming Language
+# EaC (easy) Programming Language Compiler
 
-**EaC (easy)** is a modern, general-purpose, procedural programming language designed for simplicity, readability, and ease of use. It is a **dynamically-typed** language with **Python-inspired syntax** and **C-based operators**.
+A modern, Python-inspired procedural programming language with C-based syntax.
 
-## Key Features
+## Quick Start
 
-- **Dynamic Typing**: Variable types inferred at runtime
-- **Clean Syntax**: Python-inspired with significant whitespace
-- **C-Based Operators**: Familiar operators from C
-- **Simple Keywords**: 23 built-ins including `flex`, `fixed`, `when`, `output`, `function`, `import`, `from`
-- **Noise Word Handling**: Recognizes and labels benign words like `please`, `kindly`, `maybe`
-- **Extended Literals**: Integers, floats, strings, characters, and booleans
-- **Type Hints**: Optional type annotations for clarity
+### Build the Compiler
+```bash
+make
+```
 
-## Project Status
+### Run All Tests
+```bash
+make test-all
+```
 
-- **Lexical Analyzer**: Complete with full indentation tracking  
-- **Parser**: Coming soon  
-- **Semantic Analyzer**: Coming soon  
-- **Code Generator**: Coming soon
+### Run a Specific Test
+```bash
+make test test_identifiers.eac
+```
+
+### Clean Build
+```bash
+make clean
+```
+
+---
+
+## What is EaC?
+
+**EaC (easy)** is a dynamically-typed programming language that combines:
+- **C-based operators** (+, -, *, /, %, ^, |, ==, !=, etc.)
+- **Python-inspired syntax** (clean, minimal, with significant indentation)
+- **Developer-friendly features** (flexible variables, intuitive keywords)
+
+---
+
+## Features
+
+### Core Language Features
+- ✅ **Dynamic Variables** - `flex` keyword for mutable variables
+- ✅ **Constants** - `fixed` keyword for immutable values
+- ✅ **Type Hints** - Optional type annotations (int, float, str, bool, char)
+- ✅ **Control Flow** - `when`/`else` conditionals, `while`/`for` loops
+- ✅ **Functions** - First-class function support
+- ✅ **Comments** - Single-line (#) and multi-line (/* */) comments
+- ✅ **Noise Words** - Polite keywords (please, kindly, maybe) for readability
+
+### Operators
+- **Arithmetic**: `+`, `-`, `*`, `/`, `%`, `^` (exponent), `|` (absolute)
+- **Relational**: `<`, `>`, `<=`, `>=`, `==`, `!=`
+- **Logical**: `and`, `or`, `not`
+- **Assignment**: `=`, `+=`, `-=`, `*=`, `/=`, `%=`
+
+### Example Code
+```eac
+flex age: int = 25
+fixed PI: float = 3.14159
+flex name: str = "Alice"
+
+when age > 18:
+    output("Adult")
+else:
+    output("Minor")
+
+flex counter = 0
+while counter < 5:
+    output(counter)
+    counter += 1
+
+function greet(person):
+    output("Hello, ", person)
+    return
+
+please greet("World")
+```
+
+---
+
+## Test Suite
+
+### Comprehensive Test Coverage (494+ Test Cases)
+
+The compiler includes a comprehensive test suite covering all 10 criteria:
+
+| # | Criterion | File | Cases |
+|---|-----------|------|-------|
+| 1 | File Type Validation | test_file.{py,txt,c} | 3 files |
+| 2 | Identifiers | test_identifiers.eac | 10 |
+| 3 | Keywords | test_all_keywords.eac | 190 |
+| 4 | Reserved Words | test_reserved_words.eac | 50 |
+| 5 | Constant Values | test_constant_values.eac | 50 |
+| 6 | Noise Words | test_noise_words.eac | 10 |
+| 7 | Comments | test_all_comments.eac | 10 |
+| 8a | Arithmetic Operators | test_arithmetic_operators.eac | 70 |
+| 8b | Boolean Operators | test_boolean_operators.eac | 90 |
+| 9 | Delimiters | test_delimiters.eac | 10 |
+| 10 | Invalid Tokens | test_all_invalid.eac | 10 |
+
+### Run All Tests
+```bash
+make test-all
+```
+
+This command will:
+1. Test file type validation (reject non-.eac files)
+2. Run all 10 criterion tests
+3. Generate token tables in `output/` directory
+4. Display test progress and results
+
+---
 
 ## Project Structure
 
 ```
 eac/
 ├── src/
+│   ├── main.c              # Test harness
 │   ├── common/
-│   │   └── token.h          # Token definitions
+│   │   └── token.h         # Token definitions
 │   ├── lexer/
-│   │   ├── lexer.h          # Lexer interface
-│   │   └── lexer.c          # Lexer implementation
-│   ├── parser/              # Parser (coming soon)
-│   ├── semantic/            # Semantic analyzer (coming soon)
-│   └── main.c               # Test harness
+│   │   ├── lexer.h         # Lexer interface
+│   │   └── lexer.c         # Lexer implementation
+│   ├── parser/             # Parser (future)
+│   └── semantic/           # Semantic analyzer (future)
 ├── tests/
-│   ├── test.eac             # Comprehensive test suite
-│   ├── test_indentation.eac # Indentation tracking tests
-│   ├── test_operators.eac   # All operators tests
-│   ├── test_keywords.eac    # All keywords tests
-│   ├── test_comments.eac    # Comment handling tests
-│   └── test_literals.eac    # All literal types tests
+│   ├── test_identifiers.eac
+│   ├── test_all_keywords.eac
+│   ├── test_reserved_words.eac
+│   ├── test_constant_values.eac
+│   ├── test_noise_words.eac
+│   ├── test_all_comments.eac
+│   ├── test_arithmetic_operators.eac
+│   ├── test_boolean_operators.eac
+│   ├── test_delimiters.eac
+│   ├── test_all_invalid.eac
+│   ├── test_indentation.eac
+│   ├── test_comprehensive_all.eac
+│   ├── test_file.py
+│   ├── test_file.txt
+│   └── test_file.c
+├── output/                 # Generated token tables
 ├── docs/
-│   ├── documentation.md     # Complete language specification
-│   ├── QUICK_START.md       # Getting started guide
-│   ├── SAMPLE_OUTPUT.md     # Example lexer output
-│   └── ARCHITECTURE.md      # System architecture
-├── Makefile                 # Build configuration
-└── README.md                # This file
+│   ├── DOCUMENTATION.md    # Language specification
+│   ├── DEV_GUIDE.md        # Development guide
+│   └── QUICK_START.md      # Quick start guide
+├── Makefile                # Build system
+└── README.md               # This file
 ```
-
-## Installation & Setup (Windows)
-
-### Step 1: Install MSYS2
-
-1. Download and install MSYS2 from [https://www.msys2.org/](https://www.msys2.org/)
-2. Follow the installation wizard
-3. Open MSYS2 terminal and install GCC:
-   ```bash
-   pacman -S mingw-w64-ucrt-x86_64-gcc
-   ```
-4. Add MSYS2 to your Windows PATH (typically `C:\msys64\mingw64\bin`)
-5. Verify installation:
-   ```bash
-   gcc --version
-   ```
-
-### Step 2: Install Chocolatey and Make
-
-1. **Open Windows PowerShell as Administrator**
-2. Check execution policy:
-   ```powershell
-   Get-ExecutionPolicy
-   ```
-3. If it returns `Restricted`, run one of these:
-   ```powershell
-   Set-ExecutionPolicy AllSigned
-   # OR
-   Set-ExecutionPolicy Bypass -Scope Process
-   ```
-4. Install Chocolatey:
-   ```powershell
-   Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-   ```
-5. Install Make:
-   ```powershell
-   choco install make
-   ```
-6. Verify installation:
-   ```bash
-   make --version
-   ```
-
-### Step 3: Clone and Build
-
-```bash
-# Clone the repository
-git clone https://github.com/eac-language/eac.git
-
-# Switch to development branch
-cd eac
-git checkout dev
-
-```
-
-### Troubleshooting Windows Setup
-
-**GCC not found after MSYS2 install?**
-- Make sure you added `C:\msys64\mingw64\bin` to your Windows PATH
-- Restart your terminal after updating PATH
-
-**Make command not found?**
-- Ensure Chocolatey installation completed successfully
-- Try reopening PowerShell as Administrator
-- Run `choco --version` to verify Chocolatey is installed
-
-**Permission errors?**
-- Run PowerShell as Administrator
-- Check your execution policy with `Get-ExecutionPolicy`
-
-## Quick Start
-
-### Compile
-```bash
-make all
-```
-
-### Run Tests
-
-```bash
-# Run comprehensive test
-make test
-
-# Run all test suites
-make test-all
-
-# Run individual tests
-./eac tests/test_indentation.eac
-./eac tests/test_operators.eac
-```
-
-### Test Your Own Code
-
-- Only `.eac` source files are accepted by the lexer (validation happens before tokenization)
-
-```bash
-./eac your_file.eac
-```
-
-### See Example Output
-
-Want to see what the lexer produces? Check out **[Sample Output](docs/SAMPLE_OUTPUT.md)** for detailed examples of token output for various EaC code snippets.
-
-For complete instructions, see **[Quick Start Guide](docs/QUICK_START.md)**.
-
-## Example Code
-
-```eac
-# Variable declarations
-flex age: int = 25
-fixed PI: float = 3.14159
-
-# Conditional statements
-when age >= 18:
-    output("You are an adult")
-else:
-    output("You are a minor")
-
-# Loops
-flex counter = 0
-while counter < 5:
-    output(counter)
-    counter += 1
-
-# For loops
-for i in range(10):
-    output(i)
-```
-
-## Documentation
-
-- **[Language Specification](docs/documentation.md)** - Complete language reference
-- **[Quick Start Guide](docs/QUICK_START.md)** - Get started quickly
-- **[Sample Output](docs/SAMPLE_OUTPUT.md)** - See what the lexer produces
-- **[Architecture](docs/ARCHITECTURE.md)** - System design and implementation details
-
-
-## Lexical Analyzer Features
-
-The refactored lexer includes:
-
-- **Full Indentation Tracking** - INDENT/DEDENT tokens for Python-style blocks  
-- **Comprehensive Token Set** - All operators, keywords, and literals  
-- **Comment Tokens** - Single-line (#) and multi-line (/* */) emitted as COMMENT tokens  
-- **Error Detection** - Detailed error messages with line numbers  
-- **DRY Architecture** - Keyword lookup table for maintainability  
-- **Opaque Pointer API** - Clean, encapsulated interface  
-- **Zero-Copy Design** - Efficient token processing  
-
-
-### Using GCC Directly
-
-```bash
-gcc -o eac src/main.c src/lexer/lexer.c -Isrc -Wall -Wextra -std=c11
-```
-
-## Testing
-
-The project includes comprehensive test suites:
-
-| Test File | Description |
-|-----------|-------------|
-| `test.eac` | Comprehensive test of all features |
-| `test_indentation.eac` | Indentation tracking |
-| `test_operators.eac` | All operators |
-| `test_keywords.eac` | All keywords |
-| `test_comments.eac` | Comment recognition, delimiters, and noise words |
-| `test_literals.eac` | All literal types |
-| `test_invalid.eac` | Invalid lexemes and error handling |
-
-## Language Highlights
-
-### Keywords (23 total)
-- **Variables & Flow**: `flex`, `fixed`, `when`, `else`, `while`, `for`, `in`
-- **Loop Control**: `break`, `continue`, `return`
-- **IO & Structure**: `output`, `function`
-- **Modules**: `import`, `from`
-- **Truth Values**: `true`, `false`
-- **Logical Operators**: `and`, `or`, `not`
-
-### Reserved Words (Type Hints)
-- `int`, `float`, `str`, `bool`, `char`
-
-### Noise Words
-- Recognized but semantically ignored: `please`, `kindly`, `maybe`
-
-### Operators
-- **Arithmetic (7)**: `+`, `-`, `*`, `/`, `%`, `^`, `|`
-- **Relational (6)**: `<`, `>`, `<=`, `>=`, `==`, `!=`
-- **Logical (3)**: `and`, `or`, `not`
-- **Assignment (6)**: `=`, `+=`, `-=`, `*=`, `/=`, `%=`
-- **Delimiters & Punctuation (7)**: `(`, `)`, `[`, `]`, `:`, `,`, `.`
-
-## Contributing
-
-We welcome contributions! If you find bugs or have improvements to suggest:
-
-### Contribution Workflow
-
-1. **Create a feature branch**:
-   ```bash
-   git checkout -b feat/your-addition
-   ```
-   
-2. **Make your changes**:
-   - Write clean, well-documented code
-   - Follow existing code style
-   - Add tests if applicable
-
-3. **Test your changes**:
-   ```bash
-   make clean
-   make all
-   make test-all
-   ```
-
-4. **Commit and push**:
-   ```bash
-   git add .
-   git commit -m "Description of your changes"
-   git push origin feat/your-addition
-   ```
-
-5. **Create a Pull Request**:
-   - Go to [https://github.com/eac-language/eac](https://github.com/eac-language/eac)
-   - Click "New Pull Request"
-   - Select your branch
-   - Describe your changes clearly
-   - Submit for review
-
-### Contribution Guidelines
-
-- Follow compiler design best practices
-- Write comprehensive documentation
-- Include test cases for new features
-- Ensure all existing tests pass
-- Keep commits focused and well-described
-
-This is an academic/educational project implementing a programming language from scratch. The focus is on clean, well-documented code following compiler design best practices.
-
-## License
-
-Educational project - See documentation for details.
-
-## References
-
-- **Language Specification**: `docs/documentation.md`
-- **Quick Start Guide**: `docs/QUICK_START.md`
-- **Sample Output**: `docs/SAMPLE_OUTPUT.md`
-- **Architecture Details**: `docs/ARCHITECTURE.md`
-- **MSYS2**: [https://www.msys2.org/](https://www.msys2.org/)
 
 ---
 
-**Status**: Lexical Analysis Phase Complete  
-**Next**: Parser Implementation
+## Output
+
+### Token Tables
+
+All test results are saved in `output/` directory:
+
+```
+output/symbol_table_<test_name>.txt
+```
+
+Each file contains a formatted table:
+```
+Line   Lexeme              Token               Token Special
+==========================================================================
+
+1      flex                KEYWORD             FLEX
+1      age                 IDENTIFIER          IDENTIFIER
+1      :                   DELIMITER           COLON
+1      int                 HINT_KEYWORD        HINT_INT
+1      =                   ASSIGNMENT          EQUAL
+1      25                  INTEGER             INTEGER
+...
+```
+
+---
+
+## Documentation
+
+- **[DOCUMENTATION.md](docs/DOCUMENTATION.md)** - Complete language specification
+- **[DEV_GUIDE.md](docs/DEV_GUIDE.md)** - Development guide
+- **[QUICK_START.md](docs/QUICK_START.md)** - Quick start guide
+- **[RUN_ALL_TESTS.md](RUN_ALL_TESTS.md)** - Test execution guide
+- **[TEST_SUITE_COMPLETION_REPORT.md](TEST_SUITE_COMPLETION_REPORT.md)** - Test coverage report
+- **[CLEANUP_SUMMARY.md](CLEANUP_SUMMARY.md)** - Recent cleanup changes
+
+---
+
+## Development
+
+### Requirements
+- GCC compiler
+- Make
+- Windows, Linux, or macOS
+
+### Build
+```bash
+make        # Build the compiler
+make clean  # Clean build artifacts
+```
+
+### Testing
+```bash
+make test-all                    # Run all tests
+make test test_identifiers.eac   # Run specific test
+```
+
+### Adding New Tests
+1. Create a new `.eac` file in `tests/`
+2. Add test cases following the existing patterns
+3. Run `make test <your_test>.eac`
+4. Check `output/symbol_table_<your_test>.txt` for results
+
+---
+
+## Current Status
+
+✅ **Lexical Analyzer** - Complete and fully tested  
+🔄 **Parser** - In development  
+⏳ **Semantic Analyzer** - Planned  
+⏳ **Code Generator** - Planned
+
+---
+
+## Keywords (19 total)
+
+`flex`, `fixed`, `when`, `else`, `output`, `while`, `for`, `in`, `break`, `continue`, `return`, `function`, `import`, `from`, `true`, `false`, `and`, `or`, `not`
+
+## Reserved Words (5 total)
+
+`int`, `float`, `str`, `bool`, `char`
+
+## Noise Words (3 total)
+
+`please`, `kindly`, `maybe`
+
+---
+
+## License
+
+Educational project for compiler design coursework.
+
+---
+
+## Authors
+
+EaC Compiler Development Team
+
+---
+
+**Version:** 1.0  
+**Last Updated:** November 4, 2025  
+**Status:** ✅ Lexical Analysis Phase Complete

@@ -1,0 +1,7 @@
+This is a plain text file (.txt) - NOT an EaC file
+The lexical analyzer should ONLY accept .eac files
+This file tests that non-.eac files are rejected
+
+flex x = 10
+output(x)
+

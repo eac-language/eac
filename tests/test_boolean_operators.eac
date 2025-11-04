@@ -1,0 +1,98 @@
+flex lt1 = 5 < 10
+flex lt2 = 100 < 200
+flex lt3 = 0 < 1
+flex lt4 = 25 < 50
+flex lt5 = 99 < 100
+flex lt6 = 1 < 1000
+flex lt7 = 10 < 20
+flex lt8 = 50 < 75
+flex lt9 = 7 < 14
+flex lt10 = 3 < 9
+
+flex gt1 = 10 > 5
+flex gt2 = 200 > 100
+flex gt3 = 1 > 0
+flex gt4 = 50 > 25
+flex gt5 = 100 > 99
+flex gt6 = 1000 > 1
+flex gt7 = 20 > 10
+flex gt8 = 75 > 50
+flex gt9 = 14 > 7
+flex gt10 = 9 > 3
+
+flex eq1 = 5 == 5
+flex eq2 = 10 == 10
+flex eq3 = 100 == 100
+flex eq4 = 0 == 0
+flex eq5 = 50 == 50
+flex eq6 = 999 == 999
+flex eq7 = 1 == 1
+flex eq8 = 42 == 42
+flex eq9 = 777 == 777
+flex eq10 = 12345 == 12345
+
+flex lte1 = 5 <= 10
+flex lte2 = 10 <= 10
+flex lte3 = 0 <= 1
+flex lte4 = 50 <= 50
+flex lte5 = 99 <= 100
+flex lte6 = 100 <= 100
+flex lte7 = 1 <= 1000
+flex lte8 = 25 <= 50
+flex lte9 = 75 <= 75
+flex lte10 = 3 <= 9
+
+flex gte1 = 10 >= 5
+flex gte2 = 10 >= 10
+flex gte3 = 1 >= 0
+flex gte4 = 50 >= 50
+flex gte5 = 100 >= 99
+flex gte6 = 100 >= 100
+flex gte7 = 1000 >= 1
+flex gte8 = 50 >= 25
+flex gte9 = 75 >= 75
+flex gte10 = 9 >= 3
+
+flex ne1 = 5 != 10
+flex ne2 = 10 != 5
+flex ne3 = 0 != 1
+flex ne4 = 100 != 200
+flex ne5 = 50 != 25
+flex ne6 = 1 != 0
+flex ne7 = 999 != 1000
+flex ne8 = 42 != 43
+flex ne9 = 777 != 778
+flex ne10 = 12345 != 54321
+
+flex and1 = true and true
+flex and2 = true and false
+flex and3 = false and true
+flex and4 = false and false
+flex and5 = 5 > 3 and 10 > 8
+flex and6 = 10 < 20 and 30 < 40
+flex and7 = 5 == 5 and 10 == 10
+flex and8 = 1 != 2 and 3 != 4
+flex and9 = true and true and true
+flex and10 = 5 > 0 and 10 > 0 and 15 > 0
+
+flex or1 = true or false
+flex or2 = false or true
+flex or3 = true or true
+flex or4 = false or false
+flex or5 = 5 > 10 or 10 > 5
+flex or6 = 20 < 10 or 30 > 20
+flex or7 = 5 == 10 or 10 == 10
+flex or8 = 1 != 1 or 2 != 3
+flex or9 = false or false or true
+flex or10 = 5 < 0 or 10 < 0 or 15 > 0
+
+flex not1 = not true
+flex not2 = not false
+flex not3 = not 5 > 10
+flex not4 = not 10 > 5
+flex not5 = not 5 == 5
+flex not6 = not 5 != 5
+flex not7 = not 10 < 20
+flex not8 = not 20 < 10
+flex not9 = not true and false
+flex not10 = not false or true

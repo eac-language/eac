@@ -1,0 +1,11 @@
+flex simple = 1
+flex CONSTANT = 2
+flex _private = 3
+flex my_variable = 4
+flex my_long_variable_name = 5
+flex myVariableName = 6
+flex MyClassName = 7
+flex var123 = 8
+flex test2_var3_name4 = 9
+flex _internal_var_1_test_2024 = 10
+

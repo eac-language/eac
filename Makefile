@@ -37,28 +37,61 @@ $(TEST_GOAL):
 endif
 
 test-all: $(TARGET)
-	@echo "=== Running All Test Cases ==="
+	@echo "========================================================================"
+	@echo "                  EaC LEXICAL ANALYZER - COMPREHENSIVE TEST SUITE"
+	@echo "========================================================================"
 	@echo ""
-	@echo "[1] Comprehensive Test:"
-	@./$(TARGET) tests/test.eac
+	@echo "[CRITERION 1] File Type Validation Tests:"
+	@echo "  Testing non-.eac files (should be rejected)..."
+	-@./$(TARGET) tests/test_file.py 2>nul || echo "  - test_file.py rejected correctly"
+	-@./$(TARGET) tests/test_file.txt 2>nul || echo "  - test_file.txt rejected correctly"
+	-@./$(TARGET) tests/test_file.c 2>nul || echo "  - test_file.c rejected correctly"
 	@echo ""
-	@echo "[2] Indentation Test:"
+	@echo "[CRITERION 2] Identifiers Test (10 cases):"
+	@./$(TARGET) tests/test_identifiers.eac
+	@echo ""
+	@echo "[CRITERION 3] Keywords Test (19 keywords, 190 cases):"
+	@./$(TARGET) tests/test_all_keywords.eac
+	@echo ""
+	@echo "[CRITERION 4] Reserved Words Test (5 types, 50 cases):"
+	@./$(TARGET) tests/test_reserved_words.eac
+	@echo ""
+	@echo "[CRITERION 5] Constant Values Test (5 types, 50 cases):"
+	@./$(TARGET) tests/test_constant_values.eac
+	@echo ""
+	@echo "[CRITERION 6] Noise Words Test (10 cases):"
+	@./$(TARGET) tests/test_noise_words.eac
+	@echo ""
+	@echo "[CRITERION 7] Comments Test (10 cases):"
+	@./$(TARGET) tests/test_all_comments.eac
+	@echo ""
+	@echo "[CRITERION 8a] Arithmetic Operators Test (7 operators, 70 cases):"
+	@./$(TARGET) tests/test_arithmetic_operators.eac
+	@echo ""
+	@echo "[CRITERION 8b] Boolean Operators Test (9 operators, 90 cases):"
+	@./$(TARGET) tests/test_boolean_operators.eac
+	@echo ""
+	@echo "[CRITERION 9] Delimiters & Brackets Test (10 cases):"
+	@./$(TARGET) tests/test_delimiters.eac
+	@echo ""
+	@echo "[CRITERION 10] Invalid Tokens Test (10 cases):"
+	@./$(TARGET) tests/test_all_invalid.eac || true
+	@echo ""
+	@echo "[BONUS] Python-Style Indentation Test:"
 	@./$(TARGET) tests/test_indentation.eac
 	@echo ""
-	@echo "[3] Operators Test:"
-	@./$(TARGET) tests/test_operators.eac
+	@echo "[BONUS] Comprehensive All-in-One Test:"
+	@./$(TARGET) tests/test_comprehensive_all.eac
 	@echo ""
-	@echo "[4] Keywords Test:"
-	@./$(TARGET) tests/test_keywords.eac
+	@echo "========================================================================"
+	@echo "                          ALL TESTS COMPLETED"
+	@echo "========================================================================"
 	@echo ""
-	@echo "[5] Comments Test:"
-	@./$(TARGET) tests/test_comments.eac
+	@echo "Total Test Files: 14"
+	@echo "Total Test Cases: 494+"
 	@echo ""
-	@echo "[6] Literals Test:"
-	@./$(TARGET) tests/test_literals.eac
+	@echo "Check the output/ directory for detailed token tables."
 	@echo ""
-	@echo "[7] Invalid Tokens Test:"
-	@./$(TARGET) tests/test_invalid.eac || true
 
 TARGET_BIN := $(TARGET)$(EXEEXT)
 OBJ_CLEAN := $(subst /,\,$(OBJ))

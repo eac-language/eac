@@ -1,0 +1,54 @@
+flex num1: int = 1
+flex num2: int = 2
+flex num3: int = 3
+flex num4: int = 4
+flex num5: int = 5
+flex num6: int = 6
+flex num7: int = 7
+flex num8: int = 8
+flex num9: int = 9
+flex num10: int = 10
+
+flex decimal1: float = 1.1
+flex decimal2: float = 2.2
+flex decimal3: float = 3.3
+flex decimal4: float = 4.4
+flex decimal5: float = 5.5
+flex decimal6: float = 6.6
+flex decimal7: float = 7.7
+flex decimal8: float = 8.8
+flex decimal9: float = 9.9
+flex decimal10: float = 10.10
+
+flex text1: str = "string1"
+flex text2: str = "string2"
+flex text3: str = "string3"
+flex text4: str = "string4"
+flex text5: str = "string5"
+flex text6: str = "string6"
+flex text7: str = "string7"
+flex text8: str = "string8"
+flex text9: str = "string9"
+flex text10: str = "string10"
+
+flex boolean1: bool = true
+flex boolean2: bool = false
+flex boolean3: bool = true
+flex boolean4: bool = false
+flex boolean5: bool = true
+flex boolean6: bool = false
+flex boolean7: bool = true
+flex boolean8: bool = false
+flex boolean9: bool = true
+flex boolean10: bool = false
+
+flex character1: char = 'a'
+flex character2: char = 'b'
+flex character3: char = 'c'
+flex character4: char = 'd'
+flex character5: char = 'e'
+flex character6: char = 'f'
+flex character7: char = 'g'
+flex character8: char = 'h'
+flex character9: char = 'i'
+flex character10: char = 'j'

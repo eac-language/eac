@@ -1,0 +1,76 @@
+flex add1 = 1 + 1
+flex add2 = 5 + 10
+flex add3 = 100 + 200
+flex add4 = 0 + 5
+flex add5 = 25 + 75
+flex add6 = 999 + 1
+flex add7 = 50 + 50
+flex add8 = 123 + 456
+flex add9 = 10 + 20 + 30
+flex add10 = 1 + 2 + 3 + 4 + 5
+
+flex sub1 = 10 - 5
+flex sub2 = 100 - 50
+flex sub3 = 1000 - 999
+flex sub4 = 50 - 25
+flex sub5 = 200 - 100
+flex sub6 = 75 - 25
+flex sub7 = 500 - 250
+flex sub8 = 999 - 111
+flex sub9 = 100 - 20 - 10
+flex sub10 = 50 - 5 - 5 - 5 - 5
+
+flex mul1 = 2 * 3
+flex mul2 = 5 * 10
+flex mul3 = 10 * 10
+flex mul4 = 7 * 8
+flex mul5 = 12 * 12
+flex mul6 = 25 * 4
+flex mul7 = 100 * 2
+flex mul8 = 9 * 11
+flex mul9 = 3 * 3 * 3
+flex mul10 = 2 * 2 * 2 * 2 * 2
+
+flex div1 = 10 / 2
+flex div2 = 100 / 5
+flex div3 = 50 / 10
+flex div4 = 144 / 12
+flex div5 = 200 / 4
+flex div6 = 1000 / 10
+flex div7 = 64 / 8
+flex div8 = 81 / 9
+flex div9 = 100 / 2 / 5
+flex div10 = 1000 / 10 / 10
+
+flex mod1 = 10 % 3
+flex mod2 = 17 % 5
+flex mod3 = 100 % 7
+flex mod4 = 25 % 4
+flex mod5 = 50 % 6
+flex mod6 = 99 % 10
+flex mod7 = 15 % 4
+flex mod8 = 37 % 8
+flex mod9 = 100 % 3
+flex mod10 = 1000 % 7
+
+flex exp1 = 2 ^ 3
+flex exp2 = 3 ^ 2
+flex exp3 = 5 ^ 2
+flex exp4 = 2 ^ 8
+flex exp5 = 10 ^ 2
+flex exp6 = 2 ^ 10
+flex exp7 = 4 ^ 3
+flex exp8 = 3 ^ 4
+flex exp9 = 2 ^ 5
+flex exp10 = 5 ^ 3
+
+flex abs1 = |-10|
+flex abs2 = |10|
+flex abs3 = |-100|
+flex abs4 = |100|
+flex abs5 = |-50|
+flex abs6 = |50|
+flex abs7 = |-999|
+flex abs8 = |999|
+flex abs9 = |-1|
+flex abs10 = |-12345|

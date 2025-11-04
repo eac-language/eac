@@ -1,0 +1,94 @@
+flex simple_id = 1
+flex _private = 2
+flex CamelCase = 3
+flex UPPER_CASE = 4
+flex var_123 = 5
+
+flex age: int = 25
+fixed PI: float = 3.14159
+flex name: str = "Alice"
+flex is_active: bool = true
+flex grade: char = 'A'
+
+flex int1 = 0
+flex int2 = 42
+flex int3 = 999999
+
+flex float1 = 0.0
+flex float2 = 3.14
+flex float3 = 123.456
+
+flex str1 = "Hello World"
+flex str2 = "Testing strings"
+flex str3 = ""
+
+flex char1 = 'a'
+flex char2 = 'Z'
+flex char3 = '0'
+
+flex bool1 = true
+flex bool2 = false
+
+flex addition = 10 + 5
+flex subtraction = 20 - 8
+flex multiplication = 3 * 4
+flex division = 15 / 3
+flex modulo = 17 % 5
+flex exponent = 2 ^ 8
+flex absolute = |-10|
+
+flex less = 5 < 10
+flex greater = 10 > 5
+flex equal = 10 == 10
+flex less_eq = 10 <= 10
+flex greater_eq = 10 >= 10
+flex not_equal = 10 != 20
+
+flex and_op = true and false
+flex or_op = true or false
+flex not_op = not true
+
+flex list = [1, 2, 3, 4, 5]
+flex element = list[0]
+flex calc = (10 + 20) * 2
+
+when age > 18:
+    output("Adult")
+    when age > 65:
+        output("Senior")
+else:
+    output("Minor")
+
+flex counter = 0
+while counter < 5:
+    counter += 1
+    when counter == 3:
+        continue
+    output(counter)
+    when counter == 4:
+        break
+
+for i in range(5):
+    output(i)
+
+function greet(person):
+    output(person)
+    when person == "admin":
+        return
+
+import toolkit
+from library import module
+
+please kindly maybe
+
+flex x = 100
+x += 10
+x -= 5
+x *= 2
+x /= 4
+x %= 3
+
+flex complex1 = (10 + 20) * 3 / 2 - 5
+flex complex2 = 2 ^ 3 * 4 + |-15| % 7
+flex complex3 = (true and false) or (not false)
+flex complex4 = (5 < 10) and (20 > 15) or (10 == 10)
