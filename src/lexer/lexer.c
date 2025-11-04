@@ -72,6 +72,9 @@ static const KeywordEntry keywords[] = {
     {"break",    TOKEN_BREAK},
     {"continue", TOKEN_CONTINUE},
     {"return",   TOKEN_RETURN},
+    {"function", TOKEN_FUNCTION},
+    {"import",   TOKEN_IMPORT},
+    {"from",     TOKEN_FROM},
     {"true",     TOKEN_TRUE},
     {"false",    TOKEN_FALSE},
     
@@ -80,6 +83,7 @@ static const KeywordEntry keywords[] = {
     {"float",    TOKEN_HINT_FLOAT},
     {"str",      TOKEN_HINT_STR},
     {"bool",     TOKEN_HINT_BOOL},
+    {"char",     TOKEN_HINT_CHAR},
     
     // Logical operators (word-based)
     {"and",      TOKEN_AND},
@@ -87,6 +91,14 @@ static const KeywordEntry keywords[] = {
     {"not",      TOKEN_NOT},
     
     {NULL, 0}  // Sentinel
+};
+
+// ===== Noise Word Lookup Table =====
+static const KeywordEntry noiseWords[] = {
+    {"please",   TOKEN_NOISE},
+    {"kindly",   TOKEN_NOISE},
+    {"maybe",    TOKEN_NOISE},
+    {NULL, 0}
 };
 
 // ===== Helper Functions - Character Classification =====
@@ -161,28 +173,27 @@ static Token syntheticToken(Lexer* lexer, TokenType type) {
 
 // ===== Comment Handling =====
 
-static void skipLineComment(Lexer* lexer) {
-    // Skip until newline or EOF
+static Token scanLineComment(Lexer* lexer) {
     while (peek(lexer) != '\n' && !isAtEnd(lexer)) {
         advance(lexer);
     }
+    return makeToken(lexer, TOKEN_COMMENT_LINE);
 }
 
-static bool skipBlockComment(Lexer* lexer) {
-    // We've already consumed '/' and '*'
+static Token scanBlockComment(Lexer* lexer) {
     while (!isAtEnd(lexer)) {
         if (peek(lexer) == '\n') {
             lexer->line++;
             advance(lexer);
         } else if (peek(lexer) == '*' && peekNext(lexer) == '/') {
-            advance(lexer); // Consume '*'
-            advance(lexer); // Consume '/'
-            return true;
+            advance(lexer);
+            advance(lexer);
+            return makeToken(lexer, TOKEN_COMMENT_BLOCK);
         } else {
             advance(lexer);
         }
     }
-    return false; // Unterminated block comment
+    return errorToken(lexer, "Unterminated block comment.");
 }
 
 static void skipWhitespace(Lexer* lexer) {
@@ -216,6 +227,16 @@ static TokenType identifierType(Lexer* lexer) {
             return keywords[i].type;
         }
     }
+
+    // Noise words are recognized but treated specially
+    for (int i = 0; noiseWords[i].keyword != NULL; i++) {
+        const char* nw = noiseWords[i].keyword;
+        int nwLen = strlen(nw);
+
+        if (length == nwLen && memcmp(lexer->start, nw, length) == 0) {
+            return noiseWords[i].type;
+        }
+    }
     
     return TOKEN_IDENTIFIER;
 }
@@ -238,6 +259,27 @@ static Token scanString(Lexer* lexer) {
     // Consume closing quote
     advance(lexer);
     return makeToken(lexer, TOKEN_STRING);
+}
+
+static Token scanChar(Lexer* lexer) {
+    if (isAtEnd(lexer)) {
+        return errorToken(lexer, "Unterminated char literal.");
+    }
+
+    char c = advance(lexer);
+    if (c == '\\') {
+        if (isAtEnd(lexer)) {
+            return errorToken(lexer, "Unterminated escape in char literal.");
+        }
+        advance(lexer); // Consume escaped character
+    }
+
+    if (peek(lexer) != '\'') {
+        return errorToken(lexer, "Char literal must contain exactly one character.");
+    }
+
+    advance(lexer); // Consume closing quote
+    return makeToken(lexer, TOKEN_CHAR);
 }
 
 static Token scanNumber(Lexer* lexer) {
@@ -300,9 +342,8 @@ static Token handleIndentation(Lexer* lexer) {
         advance(lexer);
     }
     
-    // Check if this is a blank line or comment-only line
-    if (peek(lexer) == '\n' || peek(lexer) == '#' || 
-        (peek(lexer) == '/' && peekNext(lexer) == '*')) {
+    // Check if this is a blank line
+    if (peek(lexer) == '\n') {
         return syntheticToken(lexer, TOKEN_EOF); // Signal to skip this line
     }
     
@@ -415,6 +456,10 @@ static Token scanToken(Lexer* lexer) {
         // String literals
         case '"':
             return scanString(lexer);
+
+        // Character literals
+        case '\'':
+            return scanChar(lexer);
         
         // Delimiters
         case '(':  return makeToken(lexer, TOKEN_LPAREN);
@@ -440,10 +485,7 @@ static Token scanToken(Lexer* lexer) {
             if (match(lexer, '=')) {
                 return makeToken(lexer, TOKEN_SLASH_EQUAL);
             } else if (match(lexer, '*')) {
-                if (!skipBlockComment(lexer)) {
-                    return errorToken(lexer, "Unterminated block comment.");
-                }
-                return scanToken(lexer); // Recursively get next token
+                return scanBlockComment(lexer);
             }
             return makeToken(lexer, TOKEN_SLASH);
         
@@ -466,8 +508,7 @@ static Token scanToken(Lexer* lexer) {
         
         // Line comments
         case '#':
-            skipLineComment(lexer);
-            return scanToken(lexer); // Recursively get next token
+            return scanLineComment(lexer);
     }
     
     return errorToken(lexer, "Unexpected character.");

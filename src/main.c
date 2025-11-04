@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <ctype.h>
 #include <sys/stat.h>
 #include <errno.h>
 
@@ -35,7 +36,10 @@ const char* getTokenTypeName(TokenType type) {
         case TOKEN_IDENTIFIER:       return "IDENTIFIER";
         case TOKEN_INTEGER:          return "INTEGER";
         case TOKEN_FLOAT:            return "FLOAT";
+        case TOKEN_CHAR:             return "CHAR";
         case TOKEN_STRING:           return "STRING";
+        case TOKEN_COMMENT_LINE:     return "COMMENT";
+        case TOKEN_COMMENT_BLOCK:    return "COMMENT";
         
         // Primary Keywords
         case TOKEN_FLEX:             return "KEYWORD";
@@ -49,6 +53,9 @@ const char* getTokenTypeName(TokenType type) {
         case TOKEN_BREAK:            return "KEYWORD";
         case TOKEN_CONTINUE:         return "KEYWORD";
         case TOKEN_RETURN:           return "KEYWORD";
+        case TOKEN_FUNCTION:         return "KEYWORD";
+        case TOKEN_IMPORT:           return "KEYWORD";
+        case TOKEN_FROM:             return "KEYWORD";
         case TOKEN_TRUE:             return "KEYWORD";
         case TOKEN_FALSE:            return "KEYWORD";
         
@@ -57,6 +64,7 @@ const char* getTokenTypeName(TokenType type) {
         case TOKEN_HINT_FLOAT:       return "HINT_KEYWORD";
         case TOKEN_HINT_STR:         return "HINT_KEYWORD";
         case TOKEN_HINT_BOOL:        return "HINT_KEYWORD";
+        case TOKEN_HINT_CHAR:        return "HINT_KEYWORD";
         
         // Arithmetic Operators
         case TOKEN_PLUS:             return "ARITHMETIC";
@@ -79,6 +87,9 @@ const char* getTokenTypeName(TokenType type) {
         case TOKEN_AND:              return "LOGICAL";
         case TOKEN_OR:               return "LOGICAL";
         case TOKEN_NOT:              return "LOGICAL";
+
+        // Noise Words
+        case TOKEN_NOISE:            return "NOISE";
         
         // Assignment Operators
         case TOKEN_EQUAL:            return "ASSIGNMENT";
@@ -120,6 +131,9 @@ const char* getTokenSpecial(TokenType type) {
         case TOKEN_INTEGER:          return "INTEGER";
         case TOKEN_FLOAT:            return "FLOAT";
         case TOKEN_STRING:           return "STRING";
+        case TOKEN_CHAR:             return "CHAR";
+        case TOKEN_COMMENT_LINE:     return "COMMENT_LINE";
+        case TOKEN_COMMENT_BLOCK:    return "COMMENT_BLOCK";
         
         // Primary Keywords
         case TOKEN_FLEX:             return "FLEX";
@@ -133,6 +147,9 @@ const char* getTokenSpecial(TokenType type) {
         case TOKEN_BREAK:            return "BREAK";
         case TOKEN_CONTINUE:         return "CONTINUE";
         case TOKEN_RETURN:           return "RETURN";
+        case TOKEN_FUNCTION:         return "FUNCTION";
+        case TOKEN_IMPORT:           return "IMPORT";
+        case TOKEN_FROM:             return "FROM";
         case TOKEN_TRUE:             return "TRUE";
         case TOKEN_FALSE:            return "FALSE";
         
@@ -141,6 +158,7 @@ const char* getTokenSpecial(TokenType type) {
         case TOKEN_HINT_FLOAT:       return "HINT_FLOAT";
         case TOKEN_HINT_STR:         return "HINT_STR";
         case TOKEN_HINT_BOOL:        return "HINT_BOOL";
+        case TOKEN_HINT_CHAR:        return "HINT_CHAR";
         
         // Arithmetic Operators
         case TOKEN_PLUS:             return "PLUS";
@@ -163,6 +181,9 @@ const char* getTokenSpecial(TokenType type) {
         case TOKEN_AND:              return "AND";
         case TOKEN_OR:               return "OR";
         case TOKEN_NOT:              return "NOT";
+
+        // Noise Words
+        case TOKEN_NOISE:            return "NOISE";
         
         // Assignment Operators
         case TOKEN_EQUAL:            return "EQUAL";
@@ -183,6 +204,19 @@ const char* getTokenSpecial(TokenType type) {
         
         default:                     return "UNKNOWN";
     }
+}
+
+static bool hasEacExtension(const char* path) {
+    size_t len = strlen(path);
+    if (len < 4) {
+        return false;
+    }
+
+    const char* ext = path + len - 4;
+    return ext[0] == '.' &&
+           tolower((unsigned char)ext[1]) == 'e' &&
+           tolower((unsigned char)ext[2]) == 'a' &&
+           tolower((unsigned char)ext[3]) == 'c';
 }
 
 // ===== File Reading Utility =====
@@ -294,7 +328,10 @@ char* generateOutputFilename(const char* inputPath) {
  * printToken - Prints a token in clean table format
  */
 void printToken(FILE* outFile, Token token) {
-    // Column 1: Lexeme (20 chars wide, left-aligned)
+    // Column 1: Line number (padded to 5 chars)
+    fprintf(outFile, "%-6d", token.line);
+
+    // Column 2: Lexeme (20 chars wide, left-aligned)
     char lexeme[128] = {0};
     
     // Special handling for structural tokens
@@ -304,6 +341,18 @@ void printToken(FILE* outFile, Token token) {
         snprintf(lexeme, sizeof(lexeme), ">>INDENT");
     } else if (token.type == TOKEN_DEDENT) {
         snprintf(lexeme, sizeof(lexeme), "<<DEDENT");
+    } else if ((token.type == TOKEN_COMMENT_LINE || token.type == TOKEN_COMMENT_BLOCK) &&
+               token.length > 0) {
+        int maxCopy = token.length < (int)sizeof(lexeme) - 1 ? token.length : (int)sizeof(lexeme) - 1;
+        int j = 0;
+        for (int i = 0; i < maxCopy; i++) {
+            char ch = token.lexeme[i];
+            if (ch == '\r' || ch == '\n' || ch == '\t') {
+                ch = ' ';
+            }
+            lexeme[j++] = ch;
+        }
+        lexeme[j] = '\0';
     } else if (token.length > 0 && token.length < 127) {
         snprintf(lexeme, sizeof(lexeme), "%.*s", token.length, token.lexeme);
     }
@@ -327,6 +376,11 @@ int main(int argc, char* argv[]) {
     }
     
     const char* sourcePath = argv[1];
+
+    if (!hasEacExtension(sourcePath)) {
+        fprintf(stderr, "Error: Source file '%s' must have a .eac extension.\n", sourcePath);
+        return 1;
+    }
     
     // Create output directory
     if (!createDirectory("output")) {
@@ -360,8 +414,8 @@ int main(int argc, char* argv[]) {
     }
     
     // Write header
-    fprintf(outFile, "Lexeme              Token               Token Special\n");
-    fprintf(outFile, "====================================================================\n");
+    fprintf(outFile, "Line   Lexeme              Token               Token Special\n");
+    fprintf(outFile, "==========================================================================\n");
     fprintf(outFile, "\n");
     
     // Scan and print all tokens

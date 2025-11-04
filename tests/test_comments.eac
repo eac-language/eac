@@ -1,24 +1,16 @@
-# Test: Comments
-# This file tests both single-line and multi-line comments
+# Heading comment
+flex numbers = [1, 2, 3]
 
-# This is a single-line comment
-flex x = 10  # Inline comment
+function wrap(value):
+    output((value))
 
-/*
- * This is a multi-line comment
- * It spans multiple lines
- * And should be completely ignored by the lexer
- */
+output((numbers[0]))
+flex text = "done"  # Inline trailing comment
 
-flex y = 20
-
-/* Another block comment */
-
-/*
-Nested content:
-    when true:
-        output("This is inside a comment")
+/* Block comment spanning
+   multiple lines with when true:
+       output("inside block")
 */
 
-flex z = x + y  # Final inline comment
+please kindly maybe
 

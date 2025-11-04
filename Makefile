@@ -7,7 +7,18 @@ OBJ = $(SRC:.c=.o)
 
 TARGET = eac
 
-.PHONY: all clean test test-all
+# Determine if a specific test file was provided on the command line
+TEST_GOAL := $(firstword $(filter %.eac,$(MAKECMDGOALS)))
+
+ifeq ($(TEST_GOAL),)
+SELECTED_TEST := tests/test.eac
+else ifneq ($(findstring /,$(TEST_GOAL)),)
+SELECTED_TEST := $(TEST_GOAL)
+else
+SELECTED_TEST := tests/$(TEST_GOAL)
+endif
+
+.PHONY: all clean test test-all $(TEST_GOAL)
 
 all: $(TARGET)
 
@@ -18,8 +29,12 @@ $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 test: $(TARGET)
-	@echo "Running comprehensive test..."
-	@./$(TARGET) tests/test.eac
+	@echo "Running test file: $(SELECTED_TEST)"
+	@./$(TARGET) $(SELECTED_TEST)
+
+ifneq ($(TEST_GOAL),)
+$(TEST_GOAL):
+endif
 
 test-all: $(TARGET)
 	@echo "=== Running All Test Cases ==="
@@ -37,10 +52,13 @@ test-all: $(TARGET)
 	@./$(TARGET) tests/test_keywords.eac
 	@echo ""
 	@echo "[5] Comments Test:"
-	@./$(TARGET) tests/test_comments.eac
+@./$(TARGET) tests/test_comments.eac
 	@echo ""
 	@echo "[6] Literals Test:"
 	@./$(TARGET) tests/test_literals.eac
+@echo ""
+@echo "[7] Invalid Tokens Test:"
+@./$(TARGET) tests/test_invalid.eac || true
 
 clean:
 	rm -f $(TARGET) $(OBJ)

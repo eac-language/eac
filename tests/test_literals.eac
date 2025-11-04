@@ -1,26 +1,21 @@
-# Test: Literals
-# This file tests all types of literals
-
-# Integer Literals
 flex int1 = 0
 flex int2 = 42
 flex int3 = 999999
 
-# Float Literals
 flex float1 = 0.0
 flex float2 = 3.14159
 flex float3 = 123.456
 
-# String Literals
 flex str1 = "Hello, World!"
 flex str2 = "String with spaces"
 flex str3 = "123"
 
-# Boolean Literals
+flex char1: char = 'a'
+flex char2: char = '\n'
+
 flex bool1 = true
 flex bool2 = false
 
-# Identifiers
 flex simple_name = 1
 flex _with_underscore = 2
 flex camelCase = 3

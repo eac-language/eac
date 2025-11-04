@@ -1,179 +1,49 @@
-# ===============================================
-# EaC Lexer Comprehensive Test Suite
-# ===============================================
-# This file tests all major features of the EaC lexical analyzer:
-#   - All keywords (primary and type hints)
-#   - All operators (arithmetic, relational, logical, assignment)
-#   - Literals (integers, floats, strings, booleans)
-#   - Comments (single-line and multi-line)
-#   - Indentation tracking (INDENT/DEDENT tokens)
-#   - Delimiters and punctuation
-# ===============================================
-
-# Test 1: Variable Declarations with Type Hints
-# -----------------------------------------------
 flex age: int = 25
 fixed PI: float = 3.14159
 flex name: str = "Alice"
-flex is_student: bool = true
+flex flag: bool = true
+flex toggle: bool = false
+flex letter: char = 'A'
 
-# Test 2: All Arithmetic Operators
-# -----------------------------------------------
-flex result = 10 + 5
-result = result - 3
-result = result * 2
-result = result / 4
-result = result % 3
-result = result ^ 2
-result = |result|
-
-# Test 3: All Assignment Operators
-# -----------------------------------------------
-flex counter = 100
-counter += 10
-counter -= 5
-counter *= 2
-counter /= 3
-counter %= 7
-
-# Test 4: All Relational Operators
-# -----------------------------------------------
-flex a = 10
-flex b = 20
-flex test1 = a < b
-flex test2 = a > b
-flex test3 = a <= b
-flex test4 = a >= b
-flex test5 = a == b
-flex test6 = a != b
-
-# Test 5: All Logical Operators
-# -----------------------------------------------
-flex cond1 = true and false
-flex cond2 = true or false
-flex cond3 = not true
-
-/*
- * Test 6: Multi-line Block Comment
- * ---------------------------------
- * This is a multi-line comment block.
- * It can span multiple lines and is ignored by the lexer.
- * Useful for documentation and temporarily disabling code.
- */
-
-# Test 7: Conditional Statements (Indentation Test)
-# -----------------------------------------------
-when age >= 18:
-    output("You are an adult")
-    when age >= 65:
-        output("You are a senior citizen")
+function greet(person):
+    output(person)
+    when person == "admin":
+        output("root access")
+        return
     else:
-        output("You are a regular adult")
-else:
-    output("You are a minor")
+        output("guest access")
 
-# Test 8: While Loop (Indentation Test)
-# -----------------------------------------------
-flex i = 0
-while i < 5:
-    output(i)
-    i += 1
-    when i == 3:
+import toolkit from library
+
+flex total = 0
+while age > 0:
+    total += age
+    age -= 1
+    when age == 10 and not flag:
         break
+    when age == 5 or flag:
+        output("checkpoint")
 
-# Test 9: For Loop
-# -----------------------------------------------
-for item in range(10):
-    output(item)
-    when item == 5:
+for index in range(5):
+    when index == 2:
         continue
-    output("After continue check")
+    when index == 4:
+        break
+    output(index)
 
-# Test 10: All Keywords Test
-# -----------------------------------------------
-flex x = 0
-fixed MAX = 100
-
-when x < MAX:
-    while x < MAX:
-        for y in range(5):
-            when y == 2:
-                continue
-            else when y == 4:
-                break
-        x += 1
-        when x == 50:
-            break
+when flag and total > 0:
+    output(name)
 else:
-    output("Done")
+    output("no name")
 
-# Test 11: Boolean Literals
-# -----------------------------------------------
-flex flag1 = true
-flex flag2 = false
+flex modifier = |-42|
+flex scaled = (modifier + total) * PI
+flex exponent = 2 ^ 3
+flex remainder = scaled % 3
+flex quotient = scaled / 2
 
-# Test 12: Complex Expressions
-# -----------------------------------------------
-flex expr = (10 + 5) * 3 - 2 / 4
-flex logic = (a > 5 and b < 10) or (not flag1)
+greet("admin")
+output(scaled)
 
-# Test 13: String Literals
-# -----------------------------------------------
-flex greeting = "Hello, World!"
-flex multiline = "This is a 
-multi-line string"
+please kindly maybe
 
-# Test 14: All Delimiters
-# -----------------------------------------------
-flex list = [1, 2, 3, 4, 5]
-flex result2 = list[0]
-output((10 + 20) * 30)
-
-# Test 15: Type Hint Keywords
-# -----------------------------------------------
-flex num: int = 42
-flex decimal: float = 3.14
-flex text: str = "test"
-flex boolean: bool = true
-
-# Test 16: Function-like Output
-# -----------------------------------------------
-output("Testing output function")
-output(age)
-output(PI)
-output(true and false or not false)
-
-# Test 17: Complex Nested Indentation
-# -----------------------------------------------
-when true:
-    flex level1 = 1
-    when true:
-        flex level2 = 2
-        when true:
-            flex level3 = 3
-            output("Level 3")
-        output("Level 2")
-    output("Level 1")
-output("Level 0")
-
-# Test 18: Edge Cases
-# -----------------------------------------------
-flex underscore_var = 10
-flex _private = 20
-flex camelCase = 30
-flex SCREAMING_SNAKE = 40
-
-# Test 19: Zero and Negative Numbers
-# -----------------------------------------------
-flex zero = 0
-flex negative = -42
-flex negative_float = -3.14
-
-# Test 20: Return Statement
-# -----------------------------------------------
-when age > 0:
-    return age
-
-# ===============================================
-# End of Comprehensive Test Suite
-# ===============================================

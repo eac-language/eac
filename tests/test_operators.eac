@@ -1,7 +1,3 @@
-# Test: All Operators
-# This file tests all arithmetic, relational, logical, and assignment operators
-
-# Arithmetic Operators
 flex a = 10 + 5
 flex b = 20 - 8
 flex c = 3 * 4
@@ -10,7 +6,6 @@ flex e = 17 % 5
 flex f = 2 ^ 8
 flex g = |-10|
 
-# Relational Operators
 flex r1 = 10 < 20
 flex r2 = 20 > 10
 flex r3 = 10 <= 10
@@ -18,12 +13,10 @@ flex r4 = 20 >= 20
 flex r5 = 10 == 10
 flex r6 = 10 != 20
 
-# Logical Operators
 flex l1 = true and false
 flex l2 = true or false
 flex l3 = not true
 
-# Assignment Operators
 flex x = 100
 x += 10
 x -= 5

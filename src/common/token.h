@@ -25,7 +25,10 @@ typedef enum {
     TOKEN_IDENTIFIER,       // Variable/function names
     TOKEN_INTEGER,          // Integer literal (e.g., 42)
     TOKEN_FLOAT,            // Float literal (e.g., 3.14)
+    TOKEN_CHAR,             // Character literal (e.g., 'a')
     TOKEN_STRING,           // String literal (e.g., "hello")
+    TOKEN_COMMENT_LINE,     // # line comment
+    TOKEN_COMMENT_BLOCK,    // /* block comment */
     
     // ===== Primary Keywords =====
     TOKEN_FLEX,             // flex - mutable variable declaration
@@ -39,6 +42,9 @@ typedef enum {
     TOKEN_BREAK,            // break - exit loop
     TOKEN_CONTINUE,         // continue - skip to next iteration
     TOKEN_RETURN,           // return - exit function
+    TOKEN_FUNCTION,         // function - declare a function
+    TOKEN_IMPORT,           // import - module import
+    TOKEN_FROM,             // from - import source specifier
     TOKEN_TRUE,             // true - boolean literal
     TOKEN_FALSE,            // false - boolean literal
     
@@ -47,6 +53,7 @@ typedef enum {
     TOKEN_HINT_FLOAT,       // float - float type hint
     TOKEN_HINT_STR,         // str - string type hint
     TOKEN_HINT_BOOL,        // bool - boolean type hint
+    TOKEN_HINT_CHAR,        // char - character type hint
     
     // ===== Arithmetic Operators =====
     TOKEN_PLUS,             // +
@@ -69,6 +76,9 @@ typedef enum {
     TOKEN_AND,              // and
     TOKEN_OR,               // or
     TOKEN_NOT,              // not
+
+    // ===== Noise Words =====
+    TOKEN_NOISE,            // Noise words that are ignored by the parser
     
     // ===== Assignment Operators =====
     TOKEN_EQUAL,            // =
