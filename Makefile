@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Isrc -Wall -Wextra -std=c11 -g
 LDFLAGS =
 
-SRC = src/main.c src/lexer/lexer.c
+SRC = src/main.c
 OBJ = $(SRC:.c=.o)
 
 TARGET = eac
