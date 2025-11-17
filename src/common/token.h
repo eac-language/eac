@@ -63,6 +63,7 @@ typedef enum {
     TOKEN_PERCENT,          // %
     TOKEN_CARET,            // ^ (exponent)
     TOKEN_VBAR,             // | (absolute value)
+    TOKEN_FLOOR_DIV,        // // (floor division)
     
     // ===== Relational & Equality Operators =====
     TOKEN_LESS,             // <
@@ -78,8 +79,12 @@ typedef enum {
     TOKEN_NOT,              // not
 
     // ===== Noise Words =====
-    TOKEN_NOISE,            // Noise words that are ignored by the parser
-    
+    TOKEN_AS,            // Noise words that are ignored by the parser
+    TOKEN_EACH,
+    TOKEN_OF,
+    TOKEN_TO,
+    TOKEN_THEN,
+
     // ===== Assignment Operators =====
     TOKEN_EQUAL,            // =
     TOKEN_PLUS_EQUAL,       // +=

@@ -1,10 +1,3 @@
-/**
- * main.c - Test Harness for EaC Lexer
- * 
- * This program reads an EaC source file and writes all tokens
- * to an output text file in a clean table format.
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,115 +9,12 @@
 #include "common/token.h"
 #include "lexer/lexer.h"
 
-// ===== Token Type Name Mapping =====
-
-/**
- * getTokenTypeName - Returns the token type name (middle column)
- */
-const char* getTokenTypeName(TokenType type) {
-    switch (type) {
-        // Lifecycle
-        case TOKEN_EOF:              return "EOF";
-        case TOKEN_ERROR:            return "ERROR";
-        
-        // Whitespace & Structural
-        case TOKEN_NEWLINE:          return "NEWLINE";
-        case TOKEN_INDENT:           return "INDENT";
-        case TOKEN_DEDENT:           return "DEDENT";
-        
-        // Literals
-        case TOKEN_IDENTIFIER:       return "IDENTIFIER";
-        case TOKEN_INTEGER:          return "INTEGER";
-        case TOKEN_FLOAT:            return "FLOAT";
-        case TOKEN_CHAR:             return "CHAR";
-        case TOKEN_STRING:           return "STRING";
-        case TOKEN_COMMENT_LINE:     return "COMMENT";
-        case TOKEN_COMMENT_BLOCK:    return "COMMENT";
-        
-        // Primary Keywords
-        case TOKEN_FLEX:             return "KEYWORD";
-        case TOKEN_FIXED:            return "KEYWORD";
-        case TOKEN_WHEN:             return "KEYWORD";
-        case TOKEN_ELSE:             return "KEYWORD";
-        case TOKEN_OUTPUT:           return "KEYWORD";
-        case TOKEN_WHILE:            return "KEYWORD";
-        case TOKEN_FOR:              return "KEYWORD";
-        case TOKEN_IN:               return "KEYWORD";
-        case TOKEN_BREAK:            return "KEYWORD";
-        case TOKEN_CONTINUE:         return "KEYWORD";
-        case TOKEN_RETURN:           return "KEYWORD";
-        case TOKEN_FUNCTION:         return "KEYWORD";
-        case TOKEN_IMPORT:           return "KEYWORD";
-        case TOKEN_FROM:             return "KEYWORD";
-        case TOKEN_TRUE:             return "KEYWORD";
-        case TOKEN_FALSE:            return "KEYWORD";
-        
-        // Type Hint Keywords
-        case TOKEN_HINT_INT:         return "HINT_KEYWORD";
-        case TOKEN_HINT_FLOAT:       return "HINT_KEYWORD";
-        case TOKEN_HINT_STR:         return "HINT_KEYWORD";
-        case TOKEN_HINT_BOOL:        return "HINT_KEYWORD";
-        case TOKEN_HINT_CHAR:        return "HINT_KEYWORD";
-        
-        // Arithmetic Operators
-        case TOKEN_PLUS:             return "ARITHMETIC";
-        case TOKEN_MINUS:            return "ARITHMETIC";
-        case TOKEN_STAR:             return "ARITHMETIC";
-        case TOKEN_SLASH:            return "ARITHMETIC";
-        case TOKEN_PERCENT:          return "ARITHMETIC";
-        case TOKEN_CARET:            return "ARITHMETIC";
-        case TOKEN_VBAR:             return "ARITHMETIC";
-        
-        // Relational & Equality
-        case TOKEN_LESS:             return "RELATIONAL";
-        case TOKEN_GREATER:          return "RELATIONAL";
-        case TOKEN_EQUAL_EQUAL:      return "RELATIONAL";
-        case TOKEN_LESS_EQUAL:       return "RELATIONAL";
-        case TOKEN_GREATER_EQUAL:    return "RELATIONAL";
-        case TOKEN_BANG_EQUAL:       return "RELATIONAL";
-        
-        // Logical Operators
-        case TOKEN_AND:              return "LOGICAL";
-        case TOKEN_OR:               return "LOGICAL";
-        case TOKEN_NOT:              return "LOGICAL";
-
-        // Noise Words
-        case TOKEN_NOISE:            return "NOISE";
-        
-        // Assignment Operators
-        case TOKEN_EQUAL:            return "ASSIGNMENT";
-        case TOKEN_PLUS_EQUAL:       return "ASSIGNMENT";
-        case TOKEN_MINUS_EQUAL:      return "ASSIGNMENT";
-        case TOKEN_STAR_EQUAL:       return "ASSIGNMENT";
-        case TOKEN_SLASH_EQUAL:      return "ASSIGNMENT";
-        case TOKEN_PERCENT_EQUAL:    return "ASSIGNMENT";
-        
-        // Delimiters
-        case TOKEN_LPAREN:           return "DELIMITER";
-        case TOKEN_RPAREN:           return "DELIMITER";
-        case TOKEN_LBRACKET:         return "DELIMITER";
-        case TOKEN_RBRACKET:         return "DELIMITER";
-        case TOKEN_COLON:            return "DELIMITER";
-        case TOKEN_COMMA:            return "DELIMITER";
-        case TOKEN_DOT:              return "DELIMITER";
-        
-        default:                     return "UNKNOWN";
-    }
-}
-
-/**
- * getTokenSpecial - Returns the token special name (right column)
- */
 const char* getTokenSpecial(TokenType type) {
     switch (type) {
-        // Lifecycle
         case TOKEN_EOF:              return "EOF";
         case TOKEN_ERROR:            return "ERROR";
         
-        // Whitespace & Structural
         case TOKEN_NEWLINE:          return "NEWLINE";
-        case TOKEN_INDENT:           return "INDENT";
-        case TOKEN_DEDENT:           return "DEDENT";
         
         // Literals
         case TOKEN_IDENTIFIER:       return "IDENTIFIER";
@@ -154,17 +44,30 @@ const char* getTokenSpecial(TokenType type) {
         case TOKEN_FALSE:            return "FALSE";
         
         // Type Hint Keywords
-        case TOKEN_HINT_INT:         return "HINT_INT";
-        case TOKEN_HINT_FLOAT:       return "HINT_FLOAT";
-        case TOKEN_HINT_STR:         return "HINT_STR";
-        case TOKEN_HINT_BOOL:        return "HINT_BOOL";
-        case TOKEN_HINT_CHAR:        return "HINT_CHAR";
+        case TOKEN_HINT_INT:         return "INT_TYPE";
+        case TOKEN_HINT_FLOAT:       return "FLOAT_TYPE";
+        case TOKEN_HINT_STR:         return "STR_TYPE";
+        case TOKEN_HINT_BOOL:        return "BOOL_TYPE";
+        case TOKEN_HINT_CHAR:        return "CHAR_TYPE";
+        
+        // Logical Operators
+        case TOKEN_AND:              return "AND";
+        case TOKEN_OR:               return "OR";
+        case TOKEN_NOT:              return "NOT";
+        
+        // Noise Words
+        case TOKEN_AS:               return "AS";
+        case TOKEN_OF:               return "OF";
+        case TOKEN_TO:               return "TO";
+        case TOKEN_THEN:             return "THEN";
+        case TOKEN_EACH:             return "EACH";
         
         // Arithmetic Operators
         case TOKEN_PLUS:             return "PLUS";
         case TOKEN_MINUS:            return "MINUS";
         case TOKEN_STAR:             return "STAR";
         case TOKEN_SLASH:            return "SLASH";
+        case TOKEN_FLOOR_DIV:        return "FLOOR_DIV";
         case TOKEN_PERCENT:          return "PERCENT";
         case TOKEN_CARET:            return "CARET";
         case TOKEN_VBAR:             return "VBAR";
@@ -176,14 +79,6 @@ const char* getTokenSpecial(TokenType type) {
         case TOKEN_LESS_EQUAL:       return "LESS_EQUAL";
         case TOKEN_GREATER_EQUAL:    return "GREATER_EQUAL";
         case TOKEN_BANG_EQUAL:       return "BANG_EQUAL";
-        
-        // Logical Operators
-        case TOKEN_AND:              return "AND";
-        case TOKEN_OR:               return "OR";
-        case TOKEN_NOT:              return "NOT";
-
-        // Noise Words
-        case TOKEN_NOISE:            return "NOISE";
         
         // Assignment Operators
         case TOKEN_EQUAL:            return "EQUAL";
@@ -219,11 +114,6 @@ static bool hasEacExtension(const char* path) {
            tolower((unsigned char)ext[3]) == 'c';
 }
 
-// ===== File Reading Utility =====
-
-/**
- * readFile - Reads entire file contents into a dynamically allocated string
- */
 char* readFile(const char* path) {
     FILE* file = fopen(path, "rb");
     if (file == NULL) {
@@ -255,11 +145,6 @@ char* readFile(const char* path) {
     return buffer;
 }
 
-// ===== Directory Utility =====
-
-/**
- * createDirectory - Creates a directory if it doesn't exist
- */
 bool createDirectory(const char* path) {
 #ifdef _WIN32
     if (mkdir(path) != 0 && errno != EEXIST) {
@@ -272,9 +157,7 @@ bool createDirectory(const char* path) {
     return true;
 }
 
-/**
- * extractFilename - Extracts filename from full path
- */
+
 const char* extractFilename(const char* path) {
     const char* filename = strrchr(path, '/');
     if (filename == NULL) {
@@ -283,11 +166,6 @@ const char* extractFilename(const char* path) {
     return filename ? filename + 1 : path;
 }
 
-// ===== Output Filename Generator =====
-
-/**
- * generateOutputFilename - Creates output filename in output/ directory
- */
 char* generateOutputFilename(const char* inputPath) {
     const char* filename = extractFilename(inputPath);
     size_t len = strlen(filename);
@@ -329,25 +207,14 @@ char* generateOutputFilename(const char* inputPath) {
     return output;
 }
 
-// ===== Token Printer =====
-
-/**
- * printToken - Prints a token in clean table format
- */
 void printToken(FILE* outFile, Token token) {
-    // Column 1: Line number (padded to 5 chars)
-    fprintf(outFile, "%-6d", token.line);
-
-    // Column 2: Lexeme (20 chars wide, left-aligned)
-    char lexeme[128] = {0};
+    const char* special = getTokenSpecial(token.type);
+    fprintf(outFile, "%-30s", special);
     
-    // Special handling for structural tokens
+    char lexeme[256] = {0};
+    
     if (token.type == TOKEN_NEWLINE) {
         snprintf(lexeme, sizeof(lexeme), "\\n");
-    } else if (token.type == TOKEN_INDENT) {
-        snprintf(lexeme, sizeof(lexeme), ">>INDENT");
-    } else if (token.type == TOKEN_DEDENT) {
-        snprintf(lexeme, sizeof(lexeme), "<<DEDENT");
     } else if ((token.type == TOKEN_COMMENT_LINE || token.type == TOKEN_COMMENT_BLOCK) &&
                token.length > 0) {
         int maxCopy = token.length < (int)sizeof(lexeme) - 1 ? token.length : (int)sizeof(lexeme) - 1;
@@ -360,18 +227,19 @@ void printToken(FILE* outFile, Token token) {
             lexeme[j++] = ch;
         }
         lexeme[j] = '\0';
-    } else if (token.length > 0 && token.length < 127) {
+    } else if (token.type == TOKEN_STRING && token.length > 0) {
+        int maxCopy = token.length < (int)sizeof(lexeme) - 1 ? token.length : (int)sizeof(lexeme) - 1;
+        snprintf(lexeme, sizeof(lexeme), "%.*s", maxCopy, token.lexeme);
+    } else if (token.type == TOKEN_CHAR && token.length > 0) {
+        int maxCopy = token.length < (int)sizeof(lexeme) - 1 ? token.length : (int)sizeof(lexeme) - 1;
+        snprintf(lexeme, sizeof(lexeme), "%.*s", maxCopy, token.lexeme);
+    } else if (token.length > 0 && token.length < 255) {
         snprintf(lexeme, sizeof(lexeme), "%.*s", token.length, token.lexeme);
+    } else if (token.type == TOKEN_ERROR) {
+        snprintf(lexeme, sizeof(lexeme), "%s", token.lexeme);
     }
     
-    fprintf(outFile, "%-20s", lexeme);
-    
-    // Column 2: Token type (20 chars wide, left-aligned)
-    fprintf(outFile, "%-20s", getTokenTypeName(token.type));
-    
-    // Column 3: Token special
-    const char* special = getTokenSpecial(token.type);
-    fprintf(outFile, "%s\n", special);
+    fprintf(outFile, "%s\n", lexeme);
 }
 
 // ===== Main Program =====
@@ -389,33 +257,29 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    // Create output directory
     if (!createDirectory("output")) {
         return 1;
     }
     
-    // Set output filename
     char* outputPath = generateOutputFilename(sourcePath);
     if (outputPath == NULL) {
         return 1;
     }
     
-    // Read source file
     char* source = readFile(sourcePath);
     if (source == NULL) {
         free(outputPath);
         return 1;
     }
     
-    // Initialize lexer
     Lexer* lexer = initLexer(source);
     if (lexer == NULL) {
         fprintf(stderr, "Error: Failed to initialize lexer.\n");
         free(source);
+        free(outputPath);
         return 1;
     }
     
-    // Open output file
     FILE* outFile = fopen(outputPath, "w");
     if (outFile == NULL) {
         fprintf(stderr, "Error: Could not create output file '%s'.\n", outputPath);
@@ -425,24 +289,30 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    // Write header
-    fprintf(outFile, "Line   Lexeme              Token               Token Special\n");
+    fprintf(outFile, "EaC Lexer Output - Pure DFA Implementation\n");
+    fprintf(outFile, "Source: %s\n", sourcePath);
+    fprintf(outFile, "==========================================================================\n");
+    fprintf(outFile, "Token                          Lexeme\n");
     fprintf(outFile, "==========================================================================\n");
     fprintf(outFile, "\n");
     
-    // Scan and print all tokens
     int tokenCount = 0;
     bool hasErrors = false;
+    Token lastErrorToken;
     
     for (;;) {
         Token token = getNextToken(lexer);
         
         if (token.type == TOKEN_ERROR) {
             hasErrors = true;
-            break;
+            lastErrorToken = token;
+            fprintf(stderr, "Lexical error on line %d: %s\n", token.line, token.lexeme);
+            printToken(outFile, token);
+            continue;
         }
         
         if (token.type == TOKEN_EOF) {
+            printToken(outFile, token);
             break;
         }
         
@@ -450,17 +320,31 @@ int main(int argc, char* argv[]) {
         tokenCount++;
     }
     
-    // Console summary
-    printf("Tokenization complete: %s -> %s\n", sourcePath, outputPath);
+    fprintf(outFile, "\n");
+    fprintf(outFile, "==========================================================================\n");
+    fprintf(outFile, "Total tokens: %d\n", tokenCount);
+    if (hasErrors) {
+        fprintf(outFile, "Status: ERROR - Lexical analysis failed\n");
+    } else {
+        fprintf(outFile, "Status: SUCCESS - All tokens recognized\n");
+    }
+    
+    printf("\n");
+    printf("==========================================================================\n");
+    printf("EaC Lexer - Pure DFA Implementation\n");
+    printf("==========================================================================\n");
+    printf("Source file:  %s\n", sourcePath);
+    printf("Output file:  %s\n", outputPath);
     printf("Total tokens: %d\n", tokenCount);
     
     if (hasErrors) {
-        printf("Status: ERRORS DETECTED\n");
+        printf("Status:       FAILED\n");
+        printf("Error:        Line %d - %s\n", lastErrorToken.line, lastErrorToken.lexeme);
     } else {
-        printf("Status: SUCCESS\n");
+        printf("Status:       SUCCESS\n");
     }
+    printf("==========================================================================\n");
     
-    // Cleanup
     fclose(outFile);
     freeLexer(lexer);
     free(source);
