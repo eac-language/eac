@@ -1,16 +1,5 @@
-/**
- * token.h - Shared Token Definitions for EaC Compiler
- * 
- * This file defines all token types and the Token structure
- * used throughout the EaC compiler pipeline.
- */
-
 #ifndef EAC_TOKEN_H
 #define EAC_TOKEN_H
-
-/**
- * TokenType - Enumeration of all possible token types in EaC
- */
 typedef enum {
     // ===== Lifecycle Tokens =====
     TOKEN_EOF,              // End of file
@@ -47,6 +36,7 @@ typedef enum {
     TOKEN_FROM,             // from - import source specifier
     TOKEN_TRUE,             // true - boolean literal
     TOKEN_FALSE,            // false - boolean literal
+    TOKEN_INPUT,            // input - input function 
     
     // ===== Type Hint Keywords (Reserved Words) =====
     TOKEN_HINT_INT,         // int - integer type hint
@@ -113,7 +103,7 @@ typedef enum {
  */
 typedef struct {
     TokenType type;
-    const char* lexeme;     // Renamed from 'start' for clarity
+    const char* lexeme;   
     int length;
     int line;
 } Token;

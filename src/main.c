@@ -42,6 +42,7 @@ const char* getTokenSpecial(TokenType type) {
         case TOKEN_FROM:             return "FROM";
         case TOKEN_TRUE:             return "TRUE";
         case TOKEN_FALSE:            return "FALSE";
+        case TOKEN_INPUT:            return "INPUT";
         
         // Type Hint Keywords
         case TOKEN_HINT_INT:         return "INT_TYPE";
@@ -56,11 +57,11 @@ const char* getTokenSpecial(TokenType type) {
         case TOKEN_NOT:              return "NOT";
         
         // Noise Words
-        case TOKEN_AS:               return "AS";
-        case TOKEN_OF:               return "OF";
-        case TOKEN_TO:               return "TO";
-        case TOKEN_THEN:             return "THEN";
-        case TOKEN_EACH:             return "EACH";
+        case TOKEN_AS:               return "NOISE";
+        case TOKEN_OF:               return "NOISE";
+        case TOKEN_TO:               return "NOISE";
+        case TOKEN_THEN:             return "NOISE";
+        case TOKEN_EACH:             return "NOISE";
         
         // Arithmetic Operators
         case TOKEN_PLUS:             return "PLUS";
@@ -289,7 +290,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    fprintf(outFile, "EaC Lexer Output - Pure DFA Implementation\n");
+    fprintf(outFile, "EaC Lexer Output\n");
     fprintf(outFile, "Source: %s\n", sourcePath);
     fprintf(outFile, "==========================================================================\n");
     fprintf(outFile, "Token                          Lexeme\n");
@@ -331,7 +332,7 @@ int main(int argc, char* argv[]) {
     
     printf("\n");
     printf("==========================================================================\n");
-    printf("EaC Lexer - Pure DFA Implementation\n");
+    printf("EaC Lexer\n");
     printf("==========================================================================\n");
     printf("Source file:  %s\n", sourcePath);
     printf("Output file:  %s\n", outputPath);
