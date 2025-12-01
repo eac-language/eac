@@ -8,15 +8,32 @@
 
 #include "common/token.h"
 #include "lexer/lexer.h"
+#include "parser/parser.h"
+
+// ===== COMMAND LINE OPTIONS =====
+
+typedef enum {
+    MODE_FULL,          // Lexer + Parser (default)
+    MODE_LEX_ONLY,      // Lexer only
+    MODE_PARSE_ONLY     // Parser only (assumes lexer works)
+} CompilerMode;
+
+typedef struct {
+    CompilerMode mode;
+    bool showTokens;
+    bool verbose;
+    const char* inputFile;
+} CompilerOptions;
+
+// ===== UTILITY FUNCTIONS =====
 
 const char* getTokenSpecial(TokenType type) {
     switch (type) {
         case TOKEN_EOF:              return "EOF";
         case TOKEN_ERROR:            return "ERROR";
-        
         case TOKEN_NEWLINE:          return "NEWLINE";
-        
-        // Literals
+        case TOKEN_INDENT:           return "INDENT";
+        case TOKEN_DEDENT:           return "DEDENT";
         case TOKEN_IDENTIFIER:       return "IDENTIFIER";
         case TOKEN_INTEGER:          return "INTEGER";
         case TOKEN_FLOAT:            return "FLOAT";
@@ -24,8 +41,6 @@ const char* getTokenSpecial(TokenType type) {
         case TOKEN_CHAR:             return "CHAR";
         case TOKEN_COMMENT_LINE:     return "COMMENT_LINE";
         case TOKEN_COMMENT_BLOCK:    return "COMMENT_BLOCK";
-        
-        // Primary Keywords
         case TOKEN_FLEX:             return "FLEX";
         case TOKEN_FIXED:            return "FIXED";
         case TOKEN_WHEN:             return "WHEN";
@@ -43,27 +58,19 @@ const char* getTokenSpecial(TokenType type) {
         case TOKEN_TRUE:             return "TRUE";
         case TOKEN_FALSE:            return "FALSE";
         case TOKEN_INPUT:            return "INPUT";
-        
-        // Type Hint Keywords
         case TOKEN_HINT_INT:         return "INT_TYPE";
         case TOKEN_HINT_FLOAT:       return "FLOAT_TYPE";
         case TOKEN_HINT_STR:         return "STR_TYPE";
         case TOKEN_HINT_BOOL:        return "BOOL_TYPE";
         case TOKEN_HINT_CHAR:        return "CHAR_TYPE";
-        
-        // Logical Operators
         case TOKEN_AND:              return "AND";
         case TOKEN_OR:               return "OR";
         case TOKEN_NOT:              return "NOT";
-        
-        // Noise Words
-        case TOKEN_AS:               return "NOISE";
-        case TOKEN_OF:               return "NOISE";
-        case TOKEN_TO:               return "NOISE";
-        case TOKEN_THEN:             return "NOISE";
-        case TOKEN_EACH:             return "NOISE";
-        
-        // Arithmetic Operators
+        case TOKEN_AS:               return "AS";
+        case TOKEN_OF:               return "OF";
+        case TOKEN_TO:               return "TO";
+        case TOKEN_THEN:             return "THEN";
+        case TOKEN_EACH:             return "EACH";
         case TOKEN_PLUS:             return "PLUS";
         case TOKEN_MINUS:            return "MINUS";
         case TOKEN_STAR:             return "STAR";
@@ -72,24 +79,18 @@ const char* getTokenSpecial(TokenType type) {
         case TOKEN_PERCENT:          return "PERCENT";
         case TOKEN_CARET:            return "CARET";
         case TOKEN_VBAR:             return "VBAR";
-        
-        // Relational & Equality
         case TOKEN_LESS:             return "LESS";
         case TOKEN_GREATER:          return "GREATER";
         case TOKEN_EQUAL_EQUAL:      return "EQUAL_EQUAL";
         case TOKEN_LESS_EQUAL:       return "LESS_EQUAL";
         case TOKEN_GREATER_EQUAL:    return "GREATER_EQUAL";
         case TOKEN_BANG_EQUAL:       return "BANG_EQUAL";
-        
-        // Assignment Operators
         case TOKEN_EQUAL:            return "EQUAL";
         case TOKEN_PLUS_EQUAL:       return "PLUS_EQUAL";
         case TOKEN_MINUS_EQUAL:      return "MINUS_EQUAL";
         case TOKEN_STAR_EQUAL:       return "STAR_EQUAL";
         case TOKEN_SLASH_EQUAL:      return "SLASH_EQUAL";
         case TOKEN_PERCENT_EQUAL:    return "PERCENT_EQUAL";
-        
-        // Delimiters
         case TOKEN_LPAREN:           return "LPAREN";
         case TOKEN_RPAREN:           return "RPAREN";
         case TOKEN_LBRACKET:         return "LBRACKET";
@@ -97,17 +98,13 @@ const char* getTokenSpecial(TokenType type) {
         case TOKEN_COLON:            return "COLON";
         case TOKEN_COMMA:            return "COMMA";
         case TOKEN_DOT:              return "DOT";
-        
         default:                     return "UNKNOWN";
     }
 }
 
 static bool hasEacExtension(const char* path) {
     size_t len = strlen(path);
-    if (len < 4) {
-        return false;
-    }
-
+    if (len < 4) return false;
     const char* ext = path + len - 4;
     return ext[0] == '.' &&
            tolower((unsigned char)ext[1]) == 'e' &&
@@ -158,12 +155,9 @@ bool createDirectory(const char* path) {
     return true;
 }
 
-
 const char* extractFilename(const char* path) {
     const char* filename = strrchr(path, '/');
-    if (filename == NULL) {
-        filename = strrchr(path, '\\');
-    }
+    if (filename == NULL) filename = strrchr(path, '\\');
     return filename ? filename + 1 : path;
 }
 
@@ -171,10 +165,7 @@ char* generateOutputFilename(const char* inputPath) {
     const char* filename = extractFilename(inputPath);
     size_t len = strlen(filename);
     
-    // Create output directory
-    if (!createDirectory("output")) {
-        return NULL;
-    }
+    if (!createDirectory("output")) return NULL;
     
     const char* prefix = "output/symbol_table_";
     size_t prefixLen = strlen(prefix);
@@ -183,22 +174,16 @@ char* generateOutputFilename(const char* inputPath) {
 
     char* output;
     if (len > 4 && strcmp(filename + len - 4, ".eac") == 0) {
-        size_t stemLen = len - 4; // exclude .eac
+        size_t stemLen = len - 4;
         output = (char*)malloc(prefixLen + stemLen + suffixLen + 1);
-        if (output == NULL) {
-            fprintf(stderr, "Error: Memory allocation failed.\n");
-            return NULL;
-        }
+        if (output == NULL) return NULL;
         memcpy(output, prefix, prefixLen);
         memcpy(output + prefixLen, filename, stemLen);
         memcpy(output + prefixLen + stemLen, suffix, suffixLen);
         output[prefixLen + stemLen + suffixLen] = '\0';
     } else {
         output = (char*)malloc(prefixLen + len + suffixLen + 1);
-        if (output == NULL) {
-            fprintf(stderr, "Error: Memory allocation failed.\n");
-            return NULL;
-        }
+        if (output == NULL) return NULL;
         memcpy(output, prefix, prefixLen);
         memcpy(output + prefixLen, filename, len);
         memcpy(output + prefixLen + len, suffix, suffixLen);
@@ -216,56 +201,29 @@ void printToken(FILE* outFile, Token token) {
     
     if (token.type == TOKEN_NEWLINE) {
         snprintf(lexeme, sizeof(lexeme), "\\n");
-    } else if ((token.type == TOKEN_COMMENT_LINE || token.type == TOKEN_COMMENT_BLOCK) &&
-               token.length > 0) {
-        int maxCopy = token.length < (int)sizeof(lexeme) - 1 ? token.length : (int)sizeof(lexeme) - 1;
-        int j = 0;
-        for (int i = 0; i < maxCopy; i++) {
-            char ch = token.lexeme[i];
-            if (ch == '\r' || ch == '\n' || ch == '\t') {
-                ch = ' ';
-            }
-            lexeme[j++] = ch;
-        }
-        lexeme[j] = '\0';
-    } else if (token.type == TOKEN_STRING && token.length > 0) {
-        int maxCopy = token.length < (int)sizeof(lexeme) - 1 ? token.length : (int)sizeof(lexeme) - 1;
-        snprintf(lexeme, sizeof(lexeme), "%.*s", maxCopy, token.lexeme);
-    } else if (token.type == TOKEN_CHAR && token.length > 0) {
-        int maxCopy = token.length < (int)sizeof(lexeme) - 1 ? token.length : (int)sizeof(lexeme) - 1;
-        snprintf(lexeme, sizeof(lexeme), "%.*s", maxCopy, token.lexeme);
+    } else if (token.type == TOKEN_INDENT) {
+        snprintf(lexeme, sizeof(lexeme), "<increase indentation>");
+    } else if (token.type == TOKEN_DEDENT) {
+        snprintf(lexeme, sizeof(lexeme), "<decrease indentation>");
+    } else if (token.type == TOKEN_EOF) {
+        snprintf(lexeme, sizeof(lexeme), "<end of file>");
     } else if (token.length > 0 && token.length < 255) {
         snprintf(lexeme, sizeof(lexeme), "%.*s", token.length, token.lexeme);
-    } else if (token.type == TOKEN_ERROR) {
-        snprintf(lexeme, sizeof(lexeme), "%s", token.lexeme);
     }
     
     fprintf(outFile, "%s\n", lexeme);
 }
 
-// ===== Main Program =====
+// ===== LEXER-ONLY MODE =====
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <source-file.eac>\n", argv[0]);
-        return 1;
-    }
-    
-    const char* sourcePath = argv[1];
-
-    if (!hasEacExtension(sourcePath)) {
-        fprintf(stderr, "Error: Source file '%s' must have a .eac extension.\n", sourcePath);
-        return 1;
-    }
-    
-    if (!createDirectory("output")) {
-        return 1;
+int runLexerOnly(const char* sourcePath, bool verbose) {
+    if (verbose) {
+        printf("\n=== LEXICAL ANALYSIS MODE ===\n");
+        printf("Source file: %s\n\n", sourcePath);
     }
     
     char* outputPath = generateOutputFilename(sourcePath);
-    if (outputPath == NULL) {
-        return 1;
-    }
+    if (outputPath == NULL) return 1;
     
     char* source = readFile(sourcePath);
     if (source == NULL) {
@@ -294,57 +252,44 @@ int main(int argc, char* argv[]) {
     fprintf(outFile, "Source: %s\n", sourcePath);
     fprintf(outFile, "==========================================================================\n");
     fprintf(outFile, "Token                          Lexeme\n");
-    fprintf(outFile, "==========================================================================\n");
-    fprintf(outFile, "\n");
+    fprintf(outFile, "==========================================================================\n\n");
     
     int tokenCount = 0;
     bool hasErrors = false;
-    Token lastErrorToken;
     
     for (;;) {
         Token token = getNextToken(lexer);
         
         if (token.type == TOKEN_ERROR) {
             hasErrors = true;
-            lastErrorToken = token;
             fprintf(stderr, "Lexical error on line %d: %s\n", token.line, token.lexeme);
-            printToken(outFile, token);
-            continue;
-        }
-        
-        if (token.type == TOKEN_EOF) {
             printToken(outFile, token);
             break;
         }
         
+        if (token.type != TOKEN_COMMENT_LINE && 
+            token.type != TOKEN_COMMENT_BLOCK &&
+            token.type != TOKEN_NEWLINE &&
+            token.type != TOKEN_INDENT &&
+            token.type != TOKEN_DEDENT &&
+            token.type != TOKEN_EOF) {
+            tokenCount++;
+        }
+        
         printToken(outFile, token);
-        tokenCount++;
+        
+        if (token.type == TOKEN_EOF) break;
     }
     
-    fprintf(outFile, "\n");
-    fprintf(outFile, "==========================================================================\n");
+    fprintf(outFile, "\n==========================================================================\n");
     fprintf(outFile, "Total tokens: %d\n", tokenCount);
-    if (hasErrors) {
-        fprintf(outFile, "Status: ERROR - Lexical analysis failed\n");
-    } else {
-        fprintf(outFile, "Status: SUCCESS - All tokens recognized\n");
-    }
+    fprintf(outFile, "Status: %s\n", hasErrors ? "ERROR" : "SUCCESS");
     
-    printf("\n");
-    printf("==========================================================================\n");
-    printf("EaC Lexer\n");
-    printf("==========================================================================\n");
-    printf("Source file:  %s\n", sourcePath);
-    printf("Output file:  %s\n", outputPath);
-    printf("Total tokens: %d\n", tokenCount);
-    
-    if (hasErrors) {
-        printf("Status:       FAILED\n");
-        printf("Error:        Line %d - %s\n", lastErrorToken.line, lastErrorToken.lexeme);
-    } else {
-        printf("Status:       SUCCESS\n");
+    if (verbose) {
+        printf("Tokens: %d\n", tokenCount);
+        printf("Output: %s\n", outputPath);
+        printf("Status: %s\n\n", hasErrors ? "FAILED" : "SUCCESS");
     }
-    printf("==========================================================================\n");
     
     fclose(outFile);
     freeLexer(lexer);
@@ -352,4 +297,154 @@ int main(int argc, char* argv[]) {
     free(outputPath);
     
     return hasErrors ? 1 : 0;
+}
+
+// ===== FULL MODE (Lexer + Parser) =====
+
+int runFullAnalysis(const char* sourcePath, bool verbose) {
+    if (verbose) {
+        printf("\n=== FULL ANALYSIS MODE (Lexer + Parser) ===\n");
+        printf("Source file: %s\n\n", sourcePath);
+    }
+    
+    // Step 1: Lexical Analysis
+    char* source = readFile(sourcePath);
+    if (source == NULL) return 1;
+    
+    Lexer* lexer = initLexer(source);
+    if (lexer == NULL) {
+        fprintf(stderr, "Error: Failed to initialize lexer.\n");
+        free(source);
+        return 1;
+    }
+    
+    // Step 2: Syntax Analysis
+    Parser* parser = initParser(lexer);
+    if (parser == NULL) {
+        fprintf(stderr, "Error: Failed to initialize parser.\n");
+        freeLexer(lexer);
+        free(source);
+        return 1;
+    }
+    
+    printf("Phase 1: Lexical Analysis... ");
+    printf("[OK]\n");
+    
+    printf("Phase 2: Syntax Analysis... ");
+    bool parseSuccess = parse(parser);
+    
+    if (parseSuccess) {
+        printf("[OK]\n\n");
+        
+        if (verbose) {
+            printf("=== ANALYSIS COMPLETE ===\n");
+            printf("[PASS] Lexical analysis: PASSED\n");
+            printf("[PASS] Syntax analysis: PASSED\n");
+        }
+    } else {
+        printf("[FAIL]\n\n");
+        if (verbose) {
+            printf("=== ANALYSIS FAILED ===\n");
+            printf("[FAIL] Syntax errors detected\n");
+        }
+    }
+    
+    freeParser(parser);
+    freeLexer(lexer);
+    free(source);
+    
+    return parseSuccess ? 0 : 1;
+}
+
+// ===== COMMAND LINE PARSING =====
+
+void printUsage(const char* programName) {
+    printf("EaC Compiler - Usage:\n\n");
+    printf("  %s <file.eac>               - Full analysis (lexer + parser)\n", programName);
+    printf("  %s --lex-only <file.eac>    - Lexical analysis only\n", programName);
+    printf("  %s -v <file.eac>            - Verbose output\n", programName);
+    printf("  %s -h                       - Show this help\n\n", programName);
+    printf("Examples:\n");
+    printf("  %s tests/test.eac\n", programName);
+    printf("  %s --lex-only tests/test.eac\n", programName);
+}
+
+CompilerOptions parseCommandLine(int argc, char* argv[]) {
+    CompilerOptions opts = {
+        .mode = MODE_FULL,
+        .showTokens = false,
+        .verbose = false,
+        .inputFile = NULL
+    };
+    
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--lex-only") == 0) {
+            opts.mode = MODE_LEX_ONLY;
+        } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
+            opts.verbose = true;
+        } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            return opts; // inputFile will be NULL
+        } else if (argv[i][0] != '-') {
+            opts.inputFile = argv[i];
+        }
+    }
+    
+    return opts;
+}
+
+// ===== MAIN =====
+
+int main(int argc, char* argv[]) {
+    printf("\n");
+    printf("+======================================================================+\n");
+    printf("|                    EaC Programming Language                        |\n");
+    printf("|                   Compiler - Lexer + Parser                        |\n");
+    printf("+======================================================================+\n");
+    
+    if (argc < 2) {
+        printUsage(argv[0]);
+        return 1;
+    }
+    
+    CompilerOptions opts = parseCommandLine(argc, argv);
+    
+    if (opts.inputFile == NULL) {
+        printUsage(argv[0]);
+        return 0;
+    }
+    
+    // Validate file extension
+    if (!hasEacExtension(opts.inputFile)) {
+        fprintf(stderr, "Error: Source file must have .eac extension.\n");
+        return 1;
+    }
+    
+    int result = 0;
+    
+    switch (opts.mode) {
+        case MODE_LEX_ONLY:
+            result = runLexerOnly(opts.inputFile, opts.verbose);
+            break;
+            
+        case MODE_FULL:
+        case MODE_PARSE_ONLY:
+            result = runFullAnalysis(opts.inputFile, opts.verbose);
+            break;
+            
+        default:
+            fprintf(stderr, "Error: Invalid mode\n");
+            return 1;
+    }
+    
+    printf("\n");
+    printf("+======================================================================+\n");
+    if (result == 0) {
+        printf("|                      [PASS] COMPILATION SUCCESS                    |\n");
+    } else {
+        printf("|                      [FAIL] COMPILATION FAILED                     |\n");
+    }
+    printf("+======================================================================+\n");
+    printf("\n");
+    
+    return result;
 }

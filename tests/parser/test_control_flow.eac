@@ -1,0 +1,10 @@
+flex grade = 85
+
+when grade >= 90:
+    output("A")
+else when grade >= 80:
+    output("B")
+else when grade >= 70:
+    output("C")
+else:
+    output("F")

@@ -1,0 +1,10 @@
+flex i = 0
+while i < 5:
+    output(i)
+    i = i + 1
+
+for j in range(3):
+    output(j)
+
+for item in [10, 20, 30]:
+    output(item)
