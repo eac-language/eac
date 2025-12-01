@@ -1,0 +1,7 @@
+flex count = 0
+
+while count < 3:
+    output(count)
+    count = count + 1
+
+output("Done")

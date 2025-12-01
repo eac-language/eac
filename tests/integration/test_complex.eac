@@ -1,0 +1,10 @@
+flex x = 10
+flex y = 20
+flex z = (x + y) * 2
+
+when z > 50:
+    output("Large")
+else when z > 25:
+    output("Medium")
+else:
+    output("Small")

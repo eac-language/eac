@@ -1,15 +1,9 @@
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "lexer.h"
-
-#ifndef NULL
-#define NULL ((void*)0)
-#endif
-
-extern void* malloc(size_t size);
-extern void free(void* ptr);
-extern size_t strlen(const char* str);
 
 typedef enum {
     Q_ERROR = -1,
@@ -68,6 +62,13 @@ struct Lexer {
     const char* start;
     const char* current;
     int line;
+
+    int* indentStack;      
+    int indentCapacity;    
+    int indentCount;       
+    int pendingDedents;    
+    bool atLineStart;      
+    int currentIndent;     
 };
 
 #define IS_ALPHA(c) (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || (c) == '_')
@@ -823,7 +824,55 @@ static Token errorToken(Lexer* lexer, const char* message) {
     token.line = lexer->line;
     return token;
 }
+static void pushIndent(Lexer* lexer, int level) {
+    if (lexer->indentCount >= lexer->indentCapacity) {
+        lexer->indentCapacity *= 2;
+        int* newStack = (int*)realloc(lexer->indentStack, 
+                                       lexer->indentCapacity * sizeof(int));
+        if (newStack == NULL) {
+            return;
+        }
+        lexer->indentStack = newStack;
+    }
+    lexer->indentStack[lexer->indentCount++] = level;
+}
 
+static int popIndent(Lexer* lexer) {
+    if (lexer->indentCount > 1) {
+        return lexer->indentStack[--lexer->indentCount];
+    }
+    return 0;
+}
+
+static int peekIndent(Lexer* lexer) {
+    if (lexer->indentCount > 0) {
+        return lexer->indentStack[lexer->indentCount - 1];
+    }
+    return 0;
+}
+
+static int countIndentation(Lexer* lexer) {
+    int indent = 0;
+    const char* lineStart = lexer->current;
+    
+    // Find the actual start of the line
+    while (lineStart > lexer->source && *(lineStart - 1) != '\n') {
+        lineStart--;
+    }
+    
+    const char* p = lineStart;
+    
+    while (*p == ' ' || *p == '\t') {
+        if (*p == ' ') {
+            indent++;
+        } else if (*p == '\t') {
+            indent += 4; // Treat tab as 4 spaces
+        }
+        p++;
+    }
+    
+    return indent;
+}
 static Token scanToken(Lexer* lexer) {
     // Skip whitespace
     while (*lexer->current == ' ' || *lexer->current == '\r' || *lexer->current == '\t') {
@@ -917,9 +966,22 @@ Lexer* initLexer(const char* source) {
     lexer->current = source;
     lexer->line = 1;
     
+    // Initialize indentation tracking
+    lexer->indentCapacity = 16;
+    lexer->indentStack = (int*)malloc(lexer->indentCapacity * sizeof(int));
+    if (lexer->indentStack == NULL) {
+        free(lexer);
+        return NULL;
+    }
+    lexer->indentCount = 1;
+    lexer->indentStack[0] = 0; // Base indentation level
+    lexer->pendingDedents = 0;
+    lexer->atLineStart = true;
+    
     return lexer;
 }
 
+/* Single getNextToken implementation (indentation-aware) */
 Token getNextToken(Lexer* lexer) {
     if (lexer == NULL) {
         Token errorTok;
@@ -930,11 +992,118 @@ Token getNextToken(Lexer* lexer) {
         return errorTok;
     }
     
-    return scanToken(lexer);
+    // Emit pending dedent tokens first
+    if (lexer->pendingDedents > 0) {
+        lexer->pendingDedents--;
+        lexer->start = lexer->current;
+        return makeToken(lexer, TOKEN_DEDENT);
+    }
+    
+    // Handle indentation at the start of a line
+    if (lexer->atLineStart) {
+        lexer->atLineStart = false;
+        
+        // Skip empty lines and lines with only whitespace/comments
+        while (true) {
+            // Skip whitespace at start of line
+            while (*lexer->current == ' ' || *lexer->current == '\t' || *lexer->current == '\r') {
+                lexer->current++;
+            }
+            
+            // Check for comment
+            if (*lexer->current == '#') {
+                // Skip comment line
+                while (*lexer->current != '\n' && *lexer->current != '\0') {
+                    lexer->current++;
+                }
+            }
+            
+            // Check for newline
+            if (*lexer->current == '\n') {
+                lexer->line++;
+                lexer->current++;
+                lexer->start = lexer->current;
+                continue;  // Continue to next line
+            }
+            
+            // Non-empty line found
+            break;
+        }
+        
+        // Check for EOF
+        if (*lexer->current == '\0') {
+            // Emit all remaining dedents before EOF
+            if (lexer->indentCount > 1) {
+                lexer->pendingDedents = lexer->indentCount - 1;
+                lexer->indentCount = 1;  // Reset to base level
+                return getNextToken(lexer);
+            }
+            return makeToken(lexer, TOKEN_EOF);
+        }
+        
+        // Count indentation at the start of this non-empty line
+        lexer->start = lexer->current;
+        int indent = 0;
+        const char* lineStart = lexer->current;
+        
+        // Go back to start of line to count indentation
+        while (lineStart > lexer->source && *(lineStart - 1) != '\n') {
+            lineStart--;
+        }
+        
+        // Count spaces/tabs from line start
+        const char* p = lineStart;
+        while (*p == ' ' || *p == '\t') {
+            if (*p == ' ') {
+                indent++;
+            } else if (*p == '\t') {
+                indent += 4; // Treat tab as 4 spaces
+            }
+            p++;
+        }
+        
+        int currentLevel = peekIndent(lexer);
+        
+        if (indent > currentLevel) {
+            // Increased indentation - emit INDENT
+            pushIndent(lexer, indent);
+            lexer->start = lineStart;
+            return makeToken(lexer, TOKEN_INDENT);
+        } else if (indent < currentLevel) {
+            // Decreased indentation - emit DEDENT(s)
+            lexer->pendingDedents = 0;
+            
+            while (lexer->indentCount > 1 && peekIndent(lexer) > indent) {
+                popIndent(lexer);
+                lexer->pendingDedents++;
+            }
+            
+            if (peekIndent(lexer) != indent) {
+                return errorToken(lexer, "Indentation error: inconsistent indentation");
+            }
+            
+            lexer->start = lineStart;
+            return getNextToken(lexer);
+        }
+        
+        // Same indentation - continue normally
+    }
+    
+    Token token = scanToken(lexer);
+    
+    // Set flag for next line after newline
+    if (token.type == TOKEN_NEWLINE) {
+        lexer->atLineStart = true;
+    }
+    
+    return token;
 }
 
 void freeLexer(Lexer* lexer) {
     if (lexer != NULL) {
+        if (lexer->indentStack != NULL) {
+            free(lexer->indentStack);
+        }
         free(lexer);
     }
 }

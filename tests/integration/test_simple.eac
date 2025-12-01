@@ -1,0 +1,3 @@
+flex x = 10
+flex y = 20
+output(x + y)

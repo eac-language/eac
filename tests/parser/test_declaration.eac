@@ -1,0 +1,5 @@
+flex x = 10
+flex y: int = 20
+fixed PI: float = 3.14159
+flex name: str = "Alice"
+flex active: bool = true
