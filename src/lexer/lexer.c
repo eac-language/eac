@@ -2,6 +2,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>  
+#include <ctype.h> 
 
 #include "lexer.h"
 
@@ -62,6 +64,8 @@ struct Lexer {
     const char* start;
     const char* current;
     int line;
+    int column;              // ADD: Current column
+    const char* lineStart;   // ADD: Pointer to start of current line
 
     int* indentStack;      
     int indentCapacity;    
@@ -69,6 +73,7 @@ struct Lexer {
     int pendingDedents;    
     bool atLineStart;      
     int currentIndent;     
+    char errorBuffer[256];
 };
 
 #define IS_ALPHA(c) (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || (c) == '_')
@@ -810,9 +815,10 @@ static TokenType getTokenType(State state) {
 static Token makeToken(Lexer* lexer, TokenType type) {
     Token token;
     token.type = type;
-    token.lexeme = lexer->start;
+    token.lexeme = lexer->start;   
     token.length = (int)(lexer->current - lexer->start);
-    token.line = lexer->line;
+    token.line = lexer->line;  
+    token.column = (int)(lexer->start - lexer->lineStart) + 1;
     return token;
 }
 
@@ -822,8 +828,10 @@ static Token errorToken(Lexer* lexer, const char* message) {
     token.lexeme = message;
     token.length = (int)strlen(message);
     token.line = lexer->line;
+    token.column = lexer->column;  // ADD THIS
     return token;
 }
+
 static void pushIndent(Lexer* lexer, int level) {
     if (lexer->indentCount >= lexer->indentCapacity) {
         lexer->indentCapacity *= 2;
@@ -873,21 +881,33 @@ static int countIndentation(Lexer* lexer) {
     
     return indent;
 }
+
 static Token scanToken(Lexer* lexer) {
-    // Skip whitespace
+    // Skip whitespace but track columns
     while (*lexer->current == ' ' || *lexer->current == '\r' || *lexer->current == '\t') {
+        if (*lexer->current == '\t') {
+            lexer->column += 4;
+        } else {
+            lexer->column++;
+        }
         lexer->current++;
     }
     
     lexer->start = lexer->current;
+    int startColumn = lexer->column;
+    int startLine = lexer->line;  // SAVE the line where this token STARTS
     
     if (*lexer->current == '\0') {
-        return makeToken(lexer, TOKEN_EOF);
+        Token token = makeToken(lexer, TOKEN_EOF);
+        token.column = startColumn;
+        token.line = startLine;
+        return token;
     }
     
     State state = Q_START;
     State lastAccept = Q_ERROR;
     const char* lastAcceptPos = lexer->start;
+    int lastAcceptColumn = startColumn;
     
     while (*lexer->current != '\0') {
         char c = *lexer->current;
@@ -895,64 +915,144 @@ static Token scanToken(Lexer* lexer) {
         
         if (next == Q_ERROR) {
             if (lastAccept != Q_ERROR) {
+                // Restore to last accepting position
                 lexer->current = lastAcceptPos;
+                lexer->column = lastAcceptColumn;
+                
                 TokenType type = getTokenType(lastAccept);
-                
-                for (const char* p = lexer->start; p < lexer->current; p++) {
-                    if (*p == '\n') lexer->line++;
-                }
-                
-                return makeToken(lexer, type);
+                Token token = makeToken(lexer, type);
+                token.column = startColumn;
+                token.line = startLine;  // Use SAVED start line
+                return token;
             }
             
+            // Handle errors at Q_START
             if (state == Q_START) {
+                if (isprint((unsigned char)*lexer->current)) {
+                    snprintf(lexer->errorBuffer, sizeof(lexer->errorBuffer), 
+                            "Unexpected character '%c'", *lexer->current);
+                } else {
+                    snprintf(lexer->errorBuffer, sizeof(lexer->errorBuffer), 
+                            "Unexpected character (code %d)", (unsigned char)*lexer->current);
+                }
+                Token token = errorToken(lexer, lexer->errorBuffer);
+                token.column = startColumn;
+                token.line = startLine;  // Use SAVED start line - THIS IS KEY
                 lexer->current++;
-                return errorToken(lexer, "Unexpected character.");
+                if (*lexer->current == '\n') {
+                    lexer->line++;
+                    lexer->column = 1;
+                    lexer->lineStart = lexer->current;
+                } else {
+                    lexer->column++;
+                }
+                return token;
             }
-            if (state == Q_STRING_BODY) return errorToken(lexer, "Unterminated string literal.");
-            if (state >= Q_CHAR_START && state <= Q_CHAR_ESCAPE_DONE) 
-                return errorToken(lexer, "Unterminated char literal.");
-            if (state == Q_COMMENT_BLOCK || state == Q_COMMENT_BLOCK_STAR)
-                return errorToken(lexer, "Unterminated block comment.");
-            if (state == Q_BANG) return errorToken(lexer, "Expected '=' after '!'.");
-            if (state == Q_NUMBER_DOT) return errorToken(lexer, "Expected digit after decimal point.");
             
-            return errorToken(lexer, "Invalid token.");
+            // Handle other error states
+            if (state == Q_STRING_BODY) {
+                Token token = errorToken(lexer, "Unterminated string literal.");
+                token.column = startColumn;
+                token.line = startLine;  // Use SAVED start line
+                return token;
+            }
+            if (state >= Q_CHAR_START && state <= Q_CHAR_ESCAPE_DONE) {
+                Token token = errorToken(lexer, "Unterminated char literal.");
+                token.column = startColumn;
+                token.line = startLine;  // Use SAVED start line
+                return token;
+            }
+            if (state == Q_COMMENT_BLOCK || state == Q_COMMENT_BLOCK_STAR) {
+                Token token = errorToken(lexer, "Unterminated block comment.");
+                token.column = startColumn;
+                token.line = startLine;  // Use SAVED start line
+                return token;
+            }
+            if (state == Q_BANG) {
+                Token token = errorToken(lexer, "Expected '=' after '!'.");
+                token.column = startColumn;
+                token.line = startLine;  // Use SAVED start line
+                return token;
+            }
+            if (state == Q_NUMBER_DOT) {
+                Token token = errorToken(lexer, "Expected digit after decimal point.");
+                token.column = startColumn;
+                token.line = startLine;  // Use SAVED start line
+                return token;
+            }
+            
+            Token token = errorToken(lexer, "Invalid token.");
+            token.column = startColumn;
+            token.line = startLine;  // Use SAVED start line
+            return token;
         }
         
         lexer->current++;
+        
+        // Track column advancement based on character type
+        if (c == '\t') {
+            lexer->column += 4;
+        } else if (c == '\n') {
+            lexer->line++;
+            lexer->column = 1;
+            lexer->lineStart = lexer->current;
+        } else {
+            lexer->column++;
+        }
+        
         state = next;
         
         if (isAcceptingState(state)) {
             lastAccept = state;
             lastAcceptPos = lexer->current;
+            lastAcceptColumn = lexer->column;
         }
     }
     
+    // End of input reached
     if (isAcceptingState(state)) {
         TokenType type = getTokenType(state);
-        for (const char* p = lexer->start; p < lexer->current; p++) {
-            if (*p == '\n') lexer->line++;
-        }
-        return makeToken(lexer, type);
+        Token token = makeToken(lexer, type);
+        token.column = startColumn;
+        token.line = startLine;  // Use SAVED start line
+        return token;
     }
     
     if (lastAccept != Q_ERROR) {
         lexer->current = lastAcceptPos;
+        lexer->column = lastAcceptColumn;
+        
         TokenType type = getTokenType(lastAccept);
-        for (const char* p = lexer->start; p < lexer->current; p++) {
-            if (*p == '\n') lexer->line++;
-        }
-        return makeToken(lexer, type);
+        Token token = makeToken(lexer, type);
+        token.column = startColumn;
+        token.line = startLine;  // Use SAVED start line
+        return token;
     }
     
-    if (state == Q_STRING_BODY) return errorToken(lexer, "Unterminated string literal.");
-    if (state >= Q_CHAR_START && state <= Q_CHAR_ESCAPE_DONE)
-        return errorToken(lexer, "Unterminated char literal.");
-    if (state == Q_COMMENT_BLOCK || state == Q_COMMENT_BLOCK_STAR)
-        return errorToken(lexer, "Unterminated block comment.");
+    // Error states at EOF
+    if (state == Q_STRING_BODY) {
+        Token token = errorToken(lexer, "Unterminated string literal.");
+        token.column = startColumn;
+        token.line = startLine;  // Use SAVED start line
+        return token;
+    }
+    if (state >= Q_CHAR_START && state <= Q_CHAR_ESCAPE_DONE) {
+        Token token = errorToken(lexer, "Unterminated char literal.");
+        token.column = startColumn;
+        token.line = startLine;  // Use SAVED start line
+        return token;
+    }
+    if (state == Q_COMMENT_BLOCK || state == Q_COMMENT_BLOCK_STAR) {
+        Token token = errorToken(lexer, "Unterminated block comment.");
+        token.column = startColumn;
+        token.line = startLine;  // Use SAVED start line
+        return token;
+    }
     
-    return errorToken(lexer, "Unexpected end of input.");
+    Token token = errorToken(lexer, "Unexpected end of input.");
+    token.column = startColumn;
+    token.line = startLine;  // Use SAVED start line
+    return token;
 }
 
 Lexer* initLexer(const char* source) {
@@ -965,6 +1065,8 @@ Lexer* initLexer(const char* source) {
     lexer->start = source;
     lexer->current = source;
     lexer->line = 1;
+    lexer->column = 1;           // ADD
+    lexer->lineStart = source;   // ADD
     
     // Initialize indentation tracking
     lexer->indentCapacity = 16;
@@ -977,11 +1079,11 @@ Lexer* initLexer(const char* source) {
     lexer->indentStack[0] = 0; // Base indentation level
     lexer->pendingDedents = 0;
     lexer->atLineStart = true;
+    lexer->errorBuffer[0] = '\0'; 
     
     return lexer;
 }
 
-/* Single getNextToken implementation (indentation-aware) */
 Token getNextToken(Lexer* lexer) {
     if (lexer == NULL) {
         Token errorTok;
@@ -989,6 +1091,7 @@ Token getNextToken(Lexer* lexer) {
         errorTok.lexeme = "Lexer is NULL";
         errorTok.length = 13;
         errorTok.line = 0;
+        errorTok.column = 0;
         return errorTok;
     }
     
@@ -1007,6 +1110,11 @@ Token getNextToken(Lexer* lexer) {
         while (true) {
             // Skip whitespace at start of line
             while (*lexer->current == ' ' || *lexer->current == '\t' || *lexer->current == '\r') {
+                if (*lexer->current == '\t') {
+                    lexer->column += 4;
+                } else {
+                    lexer->column++;
+                }
                 lexer->current++;
             }
             
@@ -1021,7 +1129,9 @@ Token getNextToken(Lexer* lexer) {
             // Check for newline
             if (*lexer->current == '\n') {
                 lexer->line++;
+                lexer->column = 1;
                 lexer->current++;
+                lexer->lineStart = lexer->current;
                 lexer->start = lexer->current;
                 continue;  // Continue to next line
             }
@@ -1097,6 +1207,10 @@ Token getNextToken(Lexer* lexer) {
     }
     
     return token;
+}
+
+const char* getSource(Lexer* lexer) {
+    return lexer ? lexer->source : NULL;
 }
 
 void freeLexer(Lexer* lexer) {

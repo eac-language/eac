@@ -23,6 +23,9 @@ static void consume(Parser* parser, TokenType type, const char* message);
 static void consumeStatementTerminator(Parser* parser, const char* message);
 static void error(Parser* parser, const char* message);
 static void errorAtCurrent(Parser* parser, const char* message);
+static void errorExpected(Parser* parser, const char* expected, const char* context);
+static void errorUnexpected(Parser* parser, const char* message);
+static void errorIndentation(Parser* parser, const char* message);
 static void synchronize(Parser* parser);
 static void skipNewlines(Parser* parser);
 static bool isAtEnd(Parser* parser);
@@ -37,6 +40,8 @@ static void parseWhileLoop(Parser* parser);
 static void parseForLoop(Parser* parser);
 static void parseStatement(Parser* parser);
 static void parseBlock(Parser* parser);
+static void parseImport(Parser* parser);
+static void parseFunctionDeclaration(Parser* parser);
 
 // Expression parsing
 static void parseExpression(Parser* parser);
@@ -91,46 +96,96 @@ static bool match(Parser* parser, TokenType type) {
     return true;
 }
 
-static void consume(Parser* parser, TokenType type, const char* message) {
-    if (parser->current.type == type) {
-        advance(parser);
-        return;
+// Helper function to get source line for error reporting
+static const char* getSourceLine(Parser* parser, int line, int* lineLength) {
+    const char* source = getSource(parser->lexer);
+    const char* lineStart = source;
+    int currentLine = 1;
+    
+    // Navigate to the correct line
+    while (currentLine < line && *lineStart != '\0') {
+        if (*lineStart == '\n') {
+            currentLine++;
+        }
+        lineStart++;
     }
     
-    errorAtCurrent(parser, message);
+    // Find the end of the line
+    const char* lineEnd = lineStart;
+    while (*lineEnd != '\n' && *lineEnd != '\0') {
+        lineEnd++;
+    }
+    
+    *lineLength = (int)(lineEnd - lineStart);
+    return lineStart;
 }
 
-static void consumeStatementTerminator(Parser* parser, const char* message) {
-    // Accept newline, EOF, or DEDENT (for end of block)
-    if (match(parser, TOKEN_NEWLINE)) {
-        return;
-    }
+// Print error with single caret (^) at specific column
+static void printErrorWithCaret(Parser* parser, int line, int column) {
+    int lineLength;
+    const char* lineStart = getSourceLine(parser, line, &lineLength);
     
-    if (check(parser, TOKEN_EOF) || check(parser, TOKEN_DEDENT)) {
-        return;
-    }
+    // Print the source line
+    fprintf(stderr, "%.*s\n", lineLength, lineStart);
     
-    errorAtCurrent(parser, message);
+    // Print spaces up to the error column, then caret
+    for (int i = 1; i < column; i++) {
+        if (i <= lineLength && lineStart[i-1] == '\t') {
+            fprintf(stderr, "    ");  // 4 spaces for tab
+        } else {
+            fprintf(stderr, " ");
+        }
+    }
+    fprintf(stderr, "^\n");
 }
 
-// Updated error reporting to match documentation format
+// Print error with underline (^^^^^) for token length
+static void printErrorWithUnderline(Parser* parser, int line, int column, int length) {
+    int lineLength;
+    const char* lineStart = getSourceLine(parser, line, &lineLength);
+    
+    // Print the source line
+    fprintf(stderr, "%.*s\n", lineLength, lineStart);
+    
+    // Print spaces up to the error column
+    for (int i = 1; i < column; i++) {
+        if (i <= lineLength && lineStart[i-1] == '\t') {
+            fprintf(stderr, "    ");  // 4 spaces for tab
+        } else {
+            fprintf(stderr, " ");
+        }
+    }
+    
+    // Print underline for the token length
+    for (int i = 0; i < length; i++) {
+        fprintf(stderr, "^");
+    }
+    fprintf(stderr, "\n");
+}
+
+// Updated error reporting with better formatting
 static void error(Parser* parser, const char* message) {
     if (parser->panicMode) return;
     parser->panicMode = true;
     parser->hadError = true;
     
-    // Format: "Error at line X: message"
     fprintf(stderr, "Error at line %d", parser->previous.line);
     
+    // Add column if it's relevant
+    if (parser->previous.column > 0) {
+        fprintf(stderr, ", column %d", parser->previous.column);
+    }
+    
+    fprintf(stderr, ": %s\n", message);
+    
     if (parser->previous.type == TOKEN_EOF) {
-        fprintf(stderr, ": Unexpected end of file");
+        fprintf(stderr, "(at end of file)\n");
     } else if (parser->previous.type != TOKEN_ERROR) {
-        fprintf(stderr, ": %s", message);
-        if (parser->previous.length > 0) {
-            fprintf(stderr, " '%.*s'", parser->previous.length, parser->previous.lexeme);
-        }
-    } else {
-        fprintf(stderr, ": %s", message);
+        // Print the line with underline for the entire token
+        printErrorWithUnderline(parser, 
+                               parser->previous.line, 
+                               parser->previous.column,
+                               parser->previous.length);
     }
     
     fprintf(stderr, "\n");
@@ -141,21 +196,110 @@ static void errorAtCurrent(Parser* parser, const char* message) {
     parser->panicMode = true;
     parser->hadError = true;
     
-    // Format: "Error at line X: message"
     fprintf(stderr, "Error at line %d", parser->current.line);
     
+    // Add column if it's relevant
+    if (parser->current.column > 0) {
+        fprintf(stderr, ", column %d", parser->current.column);
+    }
+    
+    fprintf(stderr, ": %s\n", message);
+    
     if (parser->current.type == TOKEN_EOF) {
-        fprintf(stderr, ": Unexpected end of file");
+        fprintf(stderr, "(at end of file)\n");
     } else if (parser->current.type != TOKEN_ERROR) {
-        fprintf(stderr, ": %s", message);
-        if (parser->current.length > 0) {
-            fprintf(stderr, " - got '%.*s'", parser->current.length, parser->current.lexeme);
-        }
-    } else {
-        fprintf(stderr, ": %s", message);
+        // Print the line with caret at the error position
+        printErrorWithCaret(parser, 
+                           parser->current.line, 
+                           parser->current.column);
     }
     
     fprintf(stderr, "\n");
+}
+
+// Specialized error for missing tokens (shows where it should be)
+static void errorExpected(Parser* parser, const char* expected, const char* context) {
+    if (parser->panicMode) return;
+    parser->panicMode = true;
+    parser->hadError = true;
+    
+    fprintf(stderr, "Error at line %d, column %d: Expected %s%s\n", 
+            parser->current.line,
+            parser->current.column,
+            expected,
+            context ? context : "");
+    
+    // Show caret at the position where token is missing
+    printErrorWithCaret(parser, parser->current.line, parser->current.column);
+    
+    fprintf(stderr, "\n");
+}
+
+// Specialized error for unexpected tokens
+static void errorUnexpected(Parser* parser, const char* message) {
+    if (parser->panicMode) return;
+    parser->panicMode = true;
+    parser->hadError = true;
+    
+    fprintf(stderr, "Error at line %d, column %d: %s\n", 
+            parser->current.line,
+            parser->current.column,
+            message);
+    
+    // Underline the unexpected token
+    printErrorWithUnderline(parser, 
+                           parser->current.line, 
+                           parser->current.column,
+                           parser->current.length);
+    
+    fprintf(stderr, "\n");
+}
+
+// Specialized error for indentation issues
+static void errorIndentation(Parser* parser, const char* message) {
+    if (parser->panicMode) return;
+    parser->panicMode = true;
+    parser->hadError = true;
+    
+    fprintf(stderr, "Error at line %d: %s\n", 
+            parser->current.line,
+            message);
+    
+    // Show caret at the beginning of the line (column 1)
+    printErrorWithCaret(parser, parser->current.line, 1);
+    
+    fprintf(stderr, "\n");
+}
+
+// Updated consume function to use better error messages
+static void consume(Parser* parser, TokenType type, const char* message) {
+    if (parser->current.type == type) {
+        advance(parser);
+        return;
+    }
+    
+    errorExpected(parser, message, "");
+}
+
+// Enhanced consumeStatementTerminator with better error
+static void consumeStatementTerminator(Parser* parser, const char* message) {
+    // Accept newline, EOF, or DEDENT (for end of block)
+    if (match(parser, TOKEN_NEWLINE)) {
+        return;
+    }
+    
+    if (check(parser, TOKEN_EOF) || check(parser, TOKEN_DEDENT)) {
+        return;
+    }
+    
+    // If we find an unexpected token here, it's likely a statement separator issue
+    char errorMsg[256];
+    snprintf(errorMsg, sizeof(errorMsg), 
+             "%s - found '%.*s' instead", 
+             message,
+             parser->current.length,
+             parser->current.lexeme);
+    errorUnexpected(parser, errorMsg);
 }
 
 static void synchronize(Parser* parser) {
@@ -345,6 +489,95 @@ static void parsePrimary(Parser* parser) {
 
 // ===== STATEMENT PARSING =====
 
+static void parseImport(Parser* parser) {
+    // import module
+    if (match(parser, TOKEN_IDENTIFIER)) {
+        consumeStatementTerminator(parser, "Expected newline after import");
+        return;
+    }
+    
+    // from module import identifier
+    if (match(parser, TOKEN_FROM)) {
+        consume(parser, TOKEN_IDENTIFIER, "Expected module name after 'from'");
+        consume(parser, TOKEN_IMPORT, "Expected 'import' after module name");
+        
+        do {
+            consume(parser, TOKEN_IDENTIFIER, "Expected identifier to import");
+        } while (match(parser, TOKEN_COMMA));
+        
+        consumeStatementTerminator(parser, "Expected newline after import");
+        return;
+    }
+    
+    errorAtCurrent(parser, "Invalid import statement");
+}
+
+static void parseFunctionDeclaration(Parser* parser) {
+    if (!check(parser, TOKEN_IDENTIFIER)) {
+        errorExpected(parser, "function name", "");
+        return;
+    }
+    consume(parser, TOKEN_IDENTIFIER, "function name");
+    
+    if (!check(parser, TOKEN_LPAREN)) {
+        errorExpected(parser, "'('", " after function name");
+        return;
+    }
+    consume(parser, TOKEN_LPAREN, "'('");
+    
+    // Parse parameters
+    if (!check(parser, TOKEN_RPAREN)) {
+        do {
+            if (!check(parser, TOKEN_IDENTIFIER)) {
+                errorExpected(parser, "parameter name", "");
+                return;
+            }
+            consume(parser, TOKEN_IDENTIFIER, "parameter name");
+            
+            // Optional type hint
+            if (match(parser, TOKEN_COLON)) {
+                if (!match(parser, TOKEN_HINT_INT) && !match(parser, TOKEN_HINT_FLOAT) &&
+                    !match(parser, TOKEN_HINT_STR) && !match(parser, TOKEN_HINT_BOOL) &&
+                    !match(parser, TOKEN_HINT_CHAR)) {
+                    errorExpected(parser, "type hint", " for parameter");
+                    return;
+                }
+            }
+        } while (match(parser, TOKEN_COMMA));
+    }
+    
+    if (!check(parser, TOKEN_RPAREN)) {
+        errorExpected(parser, "')'", " after parameters");
+        return;
+    }
+    consume(parser, TOKEN_RPAREN, "')'");
+    
+    // Optional return type hint
+    if (match(parser, TOKEN_COLON)) {
+        if (!match(parser, TOKEN_HINT_INT) && !match(parser, TOKEN_HINT_FLOAT) &&
+            !match(parser, TOKEN_HINT_STR) && !match(parser, TOKEN_HINT_BOOL) &&
+            !match(parser, TOKEN_HINT_CHAR)) {
+            errorExpected(parser, "return type hint", "");
+            return;
+        }
+    }
+    
+    if (!check(parser, TOKEN_COLON)) {
+        errorExpected(parser, "':'", " before function body");
+        return;
+    }
+    consume(parser, TOKEN_COLON, "':'");
+    
+    consumeStatementTerminator(parser, "Expected newline after ':'");
+    
+    if (!check(parser, TOKEN_INDENT)) {
+        errorIndentation(parser, "Expected indent after function declaration");
+        return;
+    }
+    
+    parseBlock(parser);
+}
+
 static void parseDeclaration(Parser* parser) {
     consume(parser, TOKEN_IDENTIFIER, "Expected identifier after variable type");
     
@@ -353,39 +586,81 @@ static void parseDeclaration(Parser* parser) {
         if (!match(parser, TOKEN_HINT_INT) && !match(parser, TOKEN_HINT_FLOAT) &&
             !match(parser, TOKEN_HINT_STR) && !match(parser, TOKEN_HINT_BOOL) &&
             !match(parser, TOKEN_HINT_CHAR)) {
-            errorAtCurrent(parser, "Invalid type hint - use 'int', 'float', 'str', 'bool', or 'char'");
+            
+            // Check if it's a common mistake
+            if (parser->current.type == TOKEN_IDENTIFIER) {
+                const char* lexeme = parser->current.lexeme;
+                int len = parser->current.length;
+                
+                // Check for common type hint mistakes
+                if (len == 6 && strncmp(lexeme, "string", 6) == 0) {
+                    char errorMsg[256];
+                    snprintf(errorMsg, sizeof(errorMsg), 
+                             "Invalid type hint 'string' - use 'str'");
+                    errorUnexpected(parser, errorMsg);
+                    return;
+                } else if (len == 7 && strncmp(lexeme, "integer", 7) == 0) {
+                    char errorMsg[256];
+                    snprintf(errorMsg, sizeof(errorMsg), 
+                             "Invalid type hint 'integer' - use 'int'");
+                    errorUnexpected(parser, errorMsg);
+                    return;
+                } else if (len == 7 && strncmp(lexeme, "boolean", 7) == 0) {
+                    char errorMsg[256];
+                    snprintf(errorMsg, sizeof(errorMsg), 
+                             "Invalid type hint 'boolean' - use 'bool'");
+                    errorUnexpected(parser, errorMsg);
+                    return;
+                }
+            }
+            
+            errorExpected(parser, "type hint", " - use 'int', 'float', 'str', 'bool', or 'char'");
+            return;
         }
     }
     
     // Optional initializer (with 'to' noise word or '=')
     if (match(parser, TOKEN_TO) || match(parser, TOKEN_EQUAL)) {
+        if (check(parser, TOKEN_NEWLINE) || check(parser, TOKEN_EOF)) {
+            errorExpected(parser, "expression", " after '=' in assignment statement");
+            return;
+        }
         parseExpression(parser);
     }
     
-    consumeStatementTerminator(parser, "Expected newline after declaration - statements end with newline");
+    consumeStatementTerminator(parser, "Expected newline after declaration");
 }
 
 static void parseAssignment(Parser* parser, Token identifier) {
     // Consume assignment operator (+=, -=, etc.)
+    TokenType assignOp = parser->current.type;
     advance(parser);
     
-    // Optional 'as' noise word for type casting (e.g., result as float = x / y)
+    // Optional 'as' noise word for type casting
     if (match(parser, TOKEN_AS)) {
         // Expect type hint after 'as'
         if (!match(parser, TOKEN_HINT_INT) && !match(parser, TOKEN_HINT_FLOAT) &&
             !match(parser, TOKEN_HINT_STR) && !match(parser, TOKEN_HINT_BOOL) &&
             !match(parser, TOKEN_HINT_CHAR)) {
-            errorAtCurrent(parser, "Expected type hint after 'as' keyword");
+            errorExpected(parser, "type hint", " after 'as' keyword");
+            return;
         }
         // Now expect the actual assignment operator
         if (!match(parser, TOKEN_EQUAL)) {
-            errorAtCurrent(parser, "Expected '=' after type hint in assignment");
+            errorExpected(parser, "'='", " after type hint in assignment");
+            return;
         }
+    }
+    
+    // Check if there's an expression after the assignment
+    if (check(parser, TOKEN_NEWLINE) || check(parser, TOKEN_EOF) || check(parser, TOKEN_DEDENT)) {
+        errorExpected(parser, "expression", " after assignment operator");
+        return;
     }
     
     parseExpression(parser);
     
-    consumeStatementTerminator(parser, "Expected newline after assignment - statements end with newline");
+    consumeStatementTerminator(parser, "Expected newline after assignment");
 }
 
 static void parseInput(Parser* parser, Token identifier) {
@@ -403,22 +678,36 @@ static void parseInput(Parser* parser, Token identifier) {
 }
 
 static void parseOutput(Parser* parser) {
-    consume(parser, TOKEN_LPAREN, "Expected '(' after 'output'");
+    if (!check(parser, TOKEN_LPAREN)) {
+        errorExpected(parser, "'('", " after 'output'");
+        return;
+    }
+    consume(parser, TOKEN_LPAREN, "'('");
     
     if (!check(parser, TOKEN_RPAREN)) {
         do {
+            if (check(parser, TOKEN_RPAREN) || check(parser, TOKEN_NEWLINE) || 
+                check(parser, TOKEN_EOF)) {
+                errorExpected(parser, "expression", " in output statement");
+                return;
+            }
             parseExpression(parser);
         } while (match(parser, TOKEN_COMMA));
     }
     
-    consume(parser, TOKEN_RPAREN, "Expected ')' after output arguments");
+    if (!check(parser, TOKEN_RPAREN)) {
+        errorExpected(parser, "')'", " after output arguments");
+        return;
+    }
+    consume(parser, TOKEN_RPAREN, "')'");
+    
     consumeStatementTerminator(parser, "Expected newline after output statement");
 }
 
 static void parseBlock(Parser* parser) {
     // Expect INDENT
     if (!match(parser, TOKEN_INDENT)) {
-        errorAtCurrent(parser, "Indentation error - expected indent after statement");
+        errorIndentation(parser, "Expected indented block");
         return;
     }
     
@@ -436,7 +725,7 @@ static void parseBlock(Parser* parser) {
     
     // Consume DEDENT token
     if (!match(parser, TOKEN_DEDENT)) {
-        errorAtCurrent(parser, "Expected dedent after block");
+        errorIndentation(parser, "Expected dedent after block");
     }
 }
 
@@ -446,8 +735,20 @@ static void parseConditional(Parser* parser) {
     
     parseExpression(parser);
     
-    consume(parser, TOKEN_COLON, "Expected ':' after condition in 'when' statement");
+    // Better error message for missing colon
+    if (!check(parser, TOKEN_COLON)) {
+        errorExpected(parser, "':'", " after condition in 'when' statement");
+        return;
+    }
+    consume(parser, TOKEN_COLON, "':'");
+    
     consumeStatementTerminator(parser, "Expected newline after ':'");
+    
+    // Check for proper indentation
+    if (!check(parser, TOKEN_INDENT)) {
+        errorIndentation(parser, "Expected indent after 'when' statement");
+        return;
+    }
     
     parseBlock(parser);
     
@@ -462,6 +763,12 @@ static void parseConditional(Parser* parser) {
             // Final else
             consume(parser, TOKEN_COLON, "Expected ':' after 'else'");
             consumeStatementTerminator(parser, "Expected newline after ':'");
+            
+            if (!check(parser, TOKEN_INDENT)) {
+                errorIndentation(parser, "Expected indent after 'else' statement");
+                return;
+            }
+            
             parseBlock(parser);
         }
     }
@@ -470,8 +777,18 @@ static void parseConditional(Parser* parser) {
 static void parseWhileLoop(Parser* parser) {
     parseExpression(parser);
     
-    consume(parser, TOKEN_COLON, "Expected ':' after while condition");
+    if (!check(parser, TOKEN_COLON)) {
+        errorExpected(parser, "':'", " after while condition");
+        return;
+    }
+    consume(parser, TOKEN_COLON, "':'");
+    
     consumeStatementTerminator(parser, "Expected newline after ':'");
+    
+    if (!check(parser, TOKEN_INDENT)) {
+        errorIndentation(parser, "Expected indent after 'while' statement");
+        return;
+    }
     
     parseBlock(parser);
 }
@@ -480,14 +797,32 @@ static void parseForLoop(Parser* parser) {
     // Optional 'each' noise word
     match(parser, TOKEN_EACH);
     
-    consume(parser, TOKEN_IDENTIFIER, "Expected iterator variable in for loop");
+    if (!check(parser, TOKEN_IDENTIFIER)) {
+        errorExpected(parser, "iterator variable", " in for loop");
+        return;
+    }
+    consume(parser, TOKEN_IDENTIFIER, "iterator variable");
     
-    consume(parser, TOKEN_IN, "Expected 'in' in for loop");
+    if (!check(parser, TOKEN_IN)) {
+        errorExpected(parser, "'in'", " keyword in for loop");
+        return;
+    }
+    consume(parser, TOKEN_IN, "'in'");
     
     parseExpression(parser);
     
-    consume(parser, TOKEN_COLON, "Expected ':' after for loop header");
+    if (!check(parser, TOKEN_COLON)) {
+        errorExpected(parser, "':'", " after for loop header");
+        return;
+    }
+    consume(parser, TOKEN_COLON, "':'");
+    
     consumeStatementTerminator(parser, "Expected newline after ':'");
+    
+    if (!check(parser, TOKEN_INDENT)) {
+        errorIndentation(parser, "Expected indent after 'for' statement");
+        return;
+    }
     
     parseBlock(parser);
 }
@@ -501,7 +836,28 @@ static void parseStatement(Parser* parser) {
     if (match(parser, TOKEN_COMMENT_LINE) || match(parser, TOKEN_COMMENT_BLOCK)) {
         return;
     }
+
+    // Check for common syntax errors from other languages
+    if (check(parser, TOKEN_COLON) && parser->current.column > 1) {
+        errorUnexpected(parser, "Unexpected ':' - colons are only used after statements like 'when', 'for', 'while'");
+        synchronize(parser);
+        return;
+    }
+
+    // Import
+    if (match(parser, TOKEN_IMPORT)) {
+        parseImport(parser);
+        parser->statementCount++;
+        return;
+    }
     
+    // Function declaration
+    if (match(parser, TOKEN_FUNCTION)) {
+        parseFunctionDeclaration(parser);
+        parser->statementCount++;
+        return;
+    }
+
     // Declaration
     if (match(parser, TOKEN_FLEX) || match(parser, TOKEN_FIXED)) {
         parseDeclaration(parser);
@@ -586,11 +942,11 @@ static void parseStatement(Parser* parser) {
                 return;
             }
             
-            // Regular assignment - but first check for 'as' type cast
-            if (check(parser, TOKEN_AS)) {
-                // Backtrack: this is "id = as type = expr" pattern
-                // We need to handle this in parseAssignment
-                // For now, just parse the expression
+            // Check if there's an expression
+            if (check(parser, TOKEN_NEWLINE) || check(parser, TOKEN_EOF) || check(parser, TOKEN_DEDENT)) {
+                errorExpected(parser, "expression", " after '=' in assignment statement");
+                synchronize(parser);
+                return;
             }
             
             parseExpression(parser);
@@ -599,19 +955,24 @@ static void parseStatement(Parser* parser) {
             return;
         }
         
-        // Check for 'as' type cast assignment (id as type = expr)
+        // Check for 'as' type cast assignment
         if (check(parser, TOKEN_AS)) {
             advance(parser);  // Consume 'as'
             
-            // Expect type hint
             if (!match(parser, TOKEN_HINT_INT) && !match(parser, TOKEN_HINT_FLOAT) &&
                 !match(parser, TOKEN_HINT_STR) && !match(parser, TOKEN_HINT_BOOL) &&
                 !match(parser, TOKEN_HINT_CHAR)) {
-                errorAtCurrent(parser, "Expected type hint after 'as' keyword");
+                errorExpected(parser, "type hint", " after 'as' keyword");
+                synchronize(parser);
+                return;
             }
             
-            // Now expect '='
-            consume(parser, TOKEN_EQUAL, "Expected '=' after type hint in assignment");
+            if (!check(parser, TOKEN_EQUAL)) {
+                errorExpected(parser, "'='", " after type hint in assignment");
+                synchronize(parser);
+                return;
+            }
+            consume(parser, TOKEN_EQUAL, "'='");
             
             parseExpression(parser);
             consumeStatementTerminator(parser, "Expected newline after assignment");
@@ -620,12 +981,18 @@ static void parseStatement(Parser* parser) {
         }
         
         // If we get here, it's an invalid statement
-        errorAtCurrent(parser, "Expected assignment operator or statement after identifier");
+        errorExpected(parser, "assignment operator or statement", " after identifier");
         synchronize(parser);
         return;
     }
     
-    errorAtCurrent(parser, "Expected statement");
+    // If we reach here, we have an unexpected token
+    char errorMsg[256];
+    snprintf(errorMsg, sizeof(errorMsg), 
+             "Unexpected token '%.*s' - expected statement",
+             parser->current.length,
+             parser->current.lexeme);
+    errorUnexpected(parser, errorMsg);
     synchronize(parser);
 }
 

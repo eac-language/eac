@@ -12,6 +12,11 @@ typedef struct Lexer Lexer;
 Lexer* initLexer(const char* source);
 
 /**
+ * Get the source code pointer from lexer (for error reporting)
+ */
+const char* getSource(Lexer* lexer);
+
+/**
  *
  * 
  * @param lexer     Pointer to the Lexer
