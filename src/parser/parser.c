@@ -361,16 +361,6 @@ static ASTNode* boolFactor(Parser* parser) {
         return createUnaryOp(op, right, line);
     }
     
-    // ( <LOGICAL_EXPR> )
-    if (check(parser, TOKEN_LPAREN)) {
-        int savedLine = parser->current.line;
-        advance(parser);
-        ASTNode* expr = logicalExpr(parser);
-        consume(parser, TOKEN_RPAREN, "Expected ')' after logical expression");
-        return expr;
-    }
-    
-    // true | false | <RELATIONAL_EXPR>
     return relationalExpr(parser);
 }
 
@@ -413,6 +403,33 @@ static ASTNode* expression(Parser* parser) {
 }
 
 // ===== Statement Parsing =====
+// <IMPORT_STMT> -> import <id> | from <id> import <id>
+static ASTNode* importStatement(Parser* parser) {
+    int line = parser->previous.line;
+    
+    // Case 1: import moduleName
+    if (parser->previous.type == TOKEN_IMPORT) {
+        consume(parser, TOKEN_IDENTIFIER, "Expected module name after 'import'");
+        char* moduleName = tokenToString(parser->previous);
+        ASTNode* node = createImportStmt(moduleName, NULL, line);
+        free(moduleName);
+        return node;
+    } 
+    
+    // Case 2: from moduleName import target
+    // (We enter here if match(TOKEN_FROM) was called in statement())
+    consume(parser, TOKEN_IDENTIFIER, "Expected module name after 'from'");
+    char* fromModule = tokenToString(parser->previous);
+    
+    consume(parser, TOKEN_IMPORT, "Expected 'import' after module name");
+    consume(parser, TOKEN_IDENTIFIER, "Expected identifier to import");
+    char* moduleName = tokenToString(parser->previous); // This is the specific item being imported
+    
+    ASTNode* node = createImportStmt(moduleName, fromModule, line);
+    free(fromModule);
+    free(moduleName);
+    return node;
+}
 
 // <OUTPUT_STMT> → output ( <OUTPUT_ARGS> )
 static ASTNode* outputStatement(Parser* parser) {
@@ -652,10 +669,112 @@ static ASTNode* declarationStatement(Parser* parser) {
     free(name);
     return node;
 }
+static ASTNode* functionDeclaration(Parser* parser) {
+    int line = parser->previous.line;
+    
+    // 1. Parse Name
+    consume(parser, TOKEN_IDENTIFIER, "Expected function name.");
+    char* name = tokenToString(parser->previous);
+    
+    // 2. Parse Parameters: (a: int, b: int)
+    consume(parser, TOKEN_LPAREN, "Expected '(' after function name.");
+    ASTNodeList* paramsList = createNodeList();
+    
+    if (!check(parser, TOKEN_RPAREN)) {
+        do {
+            // Param Name
+            consume(parser, TOKEN_IDENTIFIER, "Expected parameter name.");
+            char* paramName = tokenToString(parser->previous);
+            int paramLine = parser->previous.line;
+            
+            // Param Type Hint
+            ASTNode* paramType = NULL;
+            if (match(parser, TOKEN_COLON)) {
+                 if (check(parser, TOKEN_HINT_INT) || check(parser, TOKEN_HINT_FLOAT) ||
+                     check(parser, TOKEN_HINT_STR) || check(parser, TOKEN_HINT_BOOL)) {
+                    TokenType type = parser->current.type;
+                    advance(parser);
+                    paramType = createTypeHint(type, paramLine);
+                } else {
+                    errorAtCurrent(parser, "Expected type hint for parameter.");
+                }
+            }
+            
+            // Create param as a VarDecl (fixed=true usually for params)
+            ASTNode* param = createVarDecl(false, paramName, paramType, NULL, paramLine);
+            addNode(paramsList, param);
+            free(paramName);
+            
+        } while (match(parser, TOKEN_COMMA));
+    }
+    consume(parser, TOKEN_RPAREN, "Expected ')' after parameters.");
+    ASTNode* paramsNode = createParamList(paramsList, line);
 
-// <STATEMENT> → <DECL_STMT> | <ASS_STMT> | <INPUT_STMT> | <OUTPUT_STMT> | <COND_STMT> | <ITER_STMT>
+    // 3. Parse Return Type: : int
+    ASTNode* returnType = NULL;
+    if (check(parser, TOKEN_COLON)) {
+        // We need to peek ahead to see if this is a return type or the block start
+        
+        consume(parser, TOKEN_COLON, "Expected ':'");
+        
+        if (check(parser, TOKEN_HINT_INT) || check(parser, TOKEN_HINT_FLOAT) ||
+            check(parser, TOKEN_HINT_STR) || check(parser, TOKEN_HINT_BOOL) || 
+            check(parser, TOKEN_HINT_CHAR)) {
+            
+            TokenType type = parser->current.type;
+            advance(parser);
+            returnType = createTypeHint(type, line);
+            
+            // If we had a return type, we need ANOTHER colon for the block start
+            consume(parser, TOKEN_COLON, "Expected ':' before function body.");
+        } 
+        // If it wasn't a type, we assume that first colon was for the block start
+    } else {
+        consume(parser, TOKEN_COLON, "Expected ':' before function body.");
+    }
+
+    // 4. Parse Body
+    consume(parser, TOKEN_NEWLINE, "Expected newline before function body.");
+    // Note: Your lexer handles INDENT/DEDENT, so we rely on statements()
+    // However, usually you check for INDENT here explicitly if your grammar requires it.
+    
+    ASTNodeList* body = statements(parser);
+    
+    ASTNode* funcNode = createFuncDecl(name, paramsNode, returnType, body, line);
+    free(name);
+    return funcNode;
+}
+
+static ASTNode* returnStatement(Parser* parser) {
+    int line = parser->previous.line;
+    ASTNode* value = NULL;
+
+    // Check if there is an expression after 'return'.
+    if (!check(parser, TOKEN_NEWLINE) && !check(parser, TOKEN_DEDENT) && !check(parser, TOKEN_EOF)) {
+        value = expression(parser);
+    }
+    
+    return createReturnStmt(value, line);
+}
+
+// <STATEMENT> → <FUNCTION_STMT> | <DECL_STMT> | <ASS_STMT> | <INPUT_STMT> | <OUTPUT_STMT> | <COND_STMT> | <BREAK_STMT> | <RETURN_STMT> | <ITER_STMT> |
 static ASTNode* statement(Parser* parser) {
     skipNewlines(parser);
+
+    // <IMPORT_STMT>
+    if (match(parser, TOKEN_IMPORT) || match(parser, TOKEN_FROM)) {
+        return importStatement(parser);
+    }
+    
+    // <FUNCTION_STMT>
+    if (match(parser, TOKEN_FUNCTION)) {
+        return functionDeclaration(parser);
+    }
+
+    // <RETURN_STMT>
+    if (match(parser, TOKEN_RETURN)) {
+        return returnStatement(parser);
+    }
     
     // <DECL_STMT>
     if (match(parser, TOKEN_FLEX) || match(parser, TOKEN_FIXED)) {
@@ -670,6 +789,11 @@ static ASTNode* statement(Parser* parser) {
     // <COND_STMT>
     if (match(parser, TOKEN_WHEN)) {
         return conditionalStatement(parser);
+    }
+
+    // <BREAK_STMT>
+    if (match(parser, TOKEN_BREAK)) {
+        return createBreakStmt(parser->previous.line);
     }
     
     // <ITER_STMT>
