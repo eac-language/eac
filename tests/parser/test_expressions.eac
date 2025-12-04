@@ -1,0 +1,9 @@
+flex a = 5 + 3
+flex b = 10 - 2
+flex c = 4 * 7
+flex d = 20 / 4
+flex e = 2 ^ 8
+flex f = |-10|
+flex g = (a + b) * (c - d)
+flex h = a > 5 and b < 15
+flex i = not (x == 10 or y == 20)

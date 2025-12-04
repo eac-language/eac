@@ -1,0 +1,18 @@
+# Full program test
+flex numbers = [1, 2, 3, 4, 5]
+flex total = 0
+
+for num in numbers:
+    total = total + num
+
+output("Sum: ") 
+output(total)
+
+flex average = total / 5
+output("Average: ")
+output(average)
+
+when average > 2:
+    output("Above average")
+else:
+    output("Below average")

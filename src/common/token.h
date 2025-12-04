@@ -106,6 +106,7 @@ typedef struct {
     const char* lexeme;   
     int length;
     int line;
+    int column;           // ADD: Column where token starts
 } Token;
 
 #endif // EAC_TOKEN_H
