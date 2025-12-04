@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Isrc -Wall -Wextra -std=c11 -g
 LDFLAGS =
 
-SRC = src/main.c src/lexer/lexer.c
+SRC = src/main.c src/lexer/lexer.c src/parser/ast.c src/parser/parser.c
 OBJ = $(SRC:.c=.o)
 
 TARGET = eac
@@ -18,7 +18,7 @@ else
 SELECTED_TEST := tests/$(TEST_GOAL)
 endif
 
-.PHONY: all clean test test-all $(TEST_GOAL)
+.PHONY: all clean test test-all test-parser $(TEST_GOAL)
 
 all: $(TARGET)
 
@@ -31,6 +31,30 @@ $(TARGET): $(OBJ)
 test: $(TARGET)
 	@echo "Running test file: $(SELECTED_TEST)"
 	@./$(TARGET) $(SELECTED_TEST)
+
+test-parser: $(TARGET)
+	@echo "========================================================================"
+	@echo "                        EaC PARSER TESTS"
+	@echo "========================================================================"
+	@echo ""
+	@echo "[TEST 1] Simple Variable Declaration:"
+	@./$(TARGET) tests/parser/test_var_decl.eac
+	@echo ""
+	@echo "[TEST 2] Expressions and Operators:"
+	@./$(TARGET) tests/parser/test_expressions.eac
+	@echo ""
+	@echo "[TEST 3] Control Flow (if/while/for):"
+	@./$(TARGET) tests/parser/test_control_flow.eac
+	@echo ""
+	@echo "[TEST 4] Functions:"
+	@./$(TARGET) tests/parser/test_functions.eac
+	@echo ""
+	@echo "[TEST 5] Complete Program:"
+	@./$(TARGET) tests/parser/test_complete.eac
+	@echo ""
+	@echo "========================================================================"
+	@echo "                      PARSER TESTS COMPLETED"
+	@echo "========================================================================"
 
 ifneq ($(TEST_GOAL),)
 $(TEST_GOAL):

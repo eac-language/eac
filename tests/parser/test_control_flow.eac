@@ -1,0 +1,22 @@
+flex x = 10
+
+when x > 5:
+    output("x is greater than 5")
+    x = x + 1
+else:
+    output("x is less than or equal to 5")
+
+flex counter = 0
+while counter < 5:
+    output(counter)
+    counter = counter + 1
+
+for i in [1, 2, 3, 4, 5]:
+    output(i)
+    when i == 3:
+        break
+
+for num in [10, 20, 30]:
+    when num == 20:
+        continue
+    output(num)
