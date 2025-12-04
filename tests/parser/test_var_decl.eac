@@ -1,0 +1,7 @@
+flex x: int = 10
+fixed PI: float = 3.14159
+flex name: str = "Alice"
+flex isActive: bool = true
+
+flex counter = 0
+fixed MAX_SIZE = 100
