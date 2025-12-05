@@ -42,9 +42,7 @@ static void errorAt(Parser* parser, Token* token, const char* message) {
     }
 }
 
-static void error(Parser* parser, const char* message) {
-    errorAt(parser, &parser->previous, message);
-}
+
 
 static void errorAtCurrent(Parser* parser, const char* message) {
     errorAt(parser, &parser->current, message);
@@ -57,10 +55,8 @@ static void advance(Parser* parser) {
         parser->current = getNextToken(parser->lexer);
         
         // Skip noise words and comments (as per spec)
-        if (parser->current.type == TOKEN_AS ||
-            parser->current.type == TOKEN_EACH ||
+        if (parser->current.type == TOKEN_EACH ||
             parser->current.type == TOKEN_OF ||
-            parser->current.type == TOKEN_TO ||
             parser->current.type == TOKEN_THEN ||
             parser->current.type == TOKEN_COMMENT_LINE ||
             parser->current.type == TOKEN_COMMENT_BLOCK) {
@@ -174,7 +170,6 @@ static char parseChar(Token token) {
 static ASTNode* expression(Parser* parser);
 static ASTNode* statement(Parser* parser);
 static ASTNodeList* statements(Parser* parser);
-static ASTNode* declaration(Parser* parser);
 
 // ===== Expression Parsing (Following Grammar) =====
 
@@ -451,22 +446,7 @@ static ASTNode* outputStatement(Parser* parser) {
 }
 
 // <INPUT_STMT> → <id> = input ( ) | <id> = input ( <STRING_LITERAL> )
-static ASTNode* inputStatement(Parser* parser, char* varName, int line) {
-    consume(parser, TOKEN_EQUAL, "Expected '=' in input statement");
-    consume(parser, TOKEN_INPUT, "Expected 'input' keyword");
-    consume(parser, TOKEN_LPAREN, "Expected '(' after 'input'");
-    
-    char* prompt = NULL;
-    if (match(parser, TOKEN_STRING)) {
-        prompt = parseString(parser->previous);
-    }
-    
-    consume(parser, TOKEN_RPAREN, "Expected ')' after input arguments");
-    
-    ASTNode* node = createInputStmt(varName, prompt, line);
-    free(prompt);
-    return node;
-}
+
 
 // <WHEN_STMT> → when <CONDITION> : <NEWLINE> <INDENT> <STATEMENTS> <DEDENT>
 // <WHEN_ELSE_STMT> → ... else : <NEWLINE> <INDENT> <STATEMENTS> <DEDENT>
@@ -613,25 +593,7 @@ static ASTNode* forStatement(Parser* parser) {
 }
 
 // <ASS_STMT> → <id> <ASSIGN_OP> <expr>
-static ASTNode* assignmentStatement(Parser* parser, char* varName, int line) {
-    // Check for compound assignment operators
-    if (match(parser, TOKEN_PLUS_EQUAL) || match(parser, TOKEN_MINUS_EQUAL) ||
-        match(parser, TOKEN_STAR_EQUAL) || match(parser, TOKEN_SLASH_EQUAL) ||
-        match(parser, TOKEN_PERCENT_EQUAL)) {
-        TokenType op = parser->previous.type;
-        ASTNode* value = expression(parser);
-        return createCompoundAssign(varName, op, value, line);
-    }
-    
-    // Regular assignment
-    if (match(parser, TOKEN_EQUAL)) {
-        ASTNode* value = expression(parser);
-        return createAssignment(varName, value, line);
-    }
-    
-    errorAtCurrent(parser, "Expected assignment operator");
-    return NULL;
-}
+
 
 // <DECL_STMT> → <VAR_TYPE> <id> [<TYPE_HINT>] [<ASSIGN> <expr>]
 static ASTNode* declarationStatement(Parser* parser) {
@@ -661,7 +623,7 @@ static ASTNode* declarationStatement(Parser* parser) {
     }
     
     // Optional initializer: <ASSIGN> <expr>
-    if (match(parser, TOKEN_EQUAL)) {
+    if (match(parser, TOKEN_EQUAL) || match(parser, TOKEN_TO)) {
         initializer = expression(parser);
     }
     
@@ -811,9 +773,19 @@ static ASTNode* statement(Parser* parser) {
         int line = parser->previous.line;
         
         // Check for input statement: <id> = input(...)
-        if (check(parser, TOKEN_EQUAL)) {
-            Token nextToken = parser->current;
-            advance(parser); // consume =
+        // Optional type hint: <id> as <type> = ...
+        if (match(parser, TOKEN_AS)) {
+            if (check(parser, TOKEN_HINT_INT) || check(parser, TOKEN_HINT_FLOAT) ||
+                check(parser, TOKEN_HINT_STR) || check(parser, TOKEN_HINT_BOOL) ||
+                check(parser, TOKEN_HINT_CHAR)) {
+                advance(parser); // Consume type
+            } else {
+                errorAtCurrent(parser, "Invalid type hint after 'as' - expected 'int', 'float', 'str', 'bool', or 'char'");
+            }
+        }
+
+        if (check(parser, TOKEN_EQUAL) || check(parser, TOKEN_TO)) {
+            advance(parser); // consume = or to
             
             if (check(parser, TOKEN_INPUT)) {
                 advance(parser); // consume input
