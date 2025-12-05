@@ -349,9 +349,17 @@ void runParser(const char* sourcePath, const char* source) {
     
     ASTNode* ast = parse(parser);
     
-    if (ast == NULL || hasError(parser)) {
-        printf("Status:       FAILED - Parsing errors occurred\n");
+    if (hasError(parser)) {
+        printf("\n==========================================================================\n");
+        printf("Status:       COMPLETED WITH ERRORS\n");
         printf("==========================================================================\n");
+        
+        if (ast) {
+            printf("\nPartial Abstract Syntax Tree (successfully parsed statements):\n");
+            printf("--------------------------------------------------------------------------\n");
+            printAST(ast, 0);
+            printf("==========================================================================\n");
+        }
     } else {
         printf("Status:       SUCCESS - AST generated\n");
         printf("==========================================================================\n");

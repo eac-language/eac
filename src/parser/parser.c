@@ -564,22 +564,29 @@ static ASTNode* forStatement(Parser* parser) {
         advance(parser);
         char* name = tokenToString(nameToken);
         
-        // Check for range(expr)
+        // Check if this is a range() call
         if (strcmp(name, "range") == 0 && match(parser, TOKEN_LPAREN)) {
-            ASTNode* rangeArg = expression(parser);
-            consume(parser, TOKEN_RPAREN, "Expected ')' after range argument");
-            
-            // Create a call expression for range
+            // Parse range arguments (can be 1, 2, or 3 arguments)
             ASTNodeList* args = createNodeList();
-            addNode(args, rangeArg);
+            
+            if (!check(parser, TOKEN_RPAREN)) {
+                do {
+                    addNode(args, expression(parser));
+                } while (match(parser, TOKEN_COMMA));
+            }
+            
+            consume(parser, TOKEN_RPAREN, "Expected ')' after range arguments");
+            
+            // Create the range call expression
             ASTNode* argList = createArgList(args, nameToken.line);
             iterable = createCallExpr("range", argList, nameToken.line);
         } else {
+            // Just a regular identifier
             iterable = createIdentifier(name, nameToken.line);
         }
         free(name);
     } else if (match(parser, TOKEN_LBRACKET)) {
-        // List literal
+        // List literal as iterable
         ASTNodeList* elements = createNodeList();
         
         if (!check(parser, TOKEN_RBRACKET)) {
@@ -917,6 +924,7 @@ static ASTNodeList* statements(Parser* parser) {
     return stmtList;
 }
 
+
 // ===== Public API =====
 
 Parser* initParser(Lexer* lexer) {
@@ -949,11 +957,8 @@ ASTNode* parse(Parser* parser) {
         errorAtCurrent(parser, "Expected end of file");
     }
     
-    if (parser->hadError) {
-        freeNodeList(stmts);
-        return NULL;
-    }
-    
+    // CHANGE: Always return the AST, even if there were errors
+    // The caller can check hasError() to decide what to do
     return createProgram(stmts);
 }
 

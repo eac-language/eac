@@ -76,12 +76,80 @@ function demonstrate_loops():
             break
         output(k)
 
-function main():
-    flex user_count = 10
-    flex total_score : float = 95.5
+function demonstrate_nested_loops():
+    output("Nested Loop Demo - Multiplication Table")
+    for i in range(1, 4):
+        for j in range(1, 4):
+            flex result = i * j
+            output(i, " x ", j, " = ", result)
+    
+    output("Nested While Loop Demo")
+    flex row = 0
+    while row < 3:
+        flex col = 0
+        while col < 3:
+            output("Position: (", row, ", ", col, ")")
+            col += 1
+        row += 1
+    
+    output("Mixed Nested Loop Demo")
+    for outer in range(3):
+        flex inner = 0
+        while inner < 2:
+            output("Outer: ", outer, " Inner: ", inner)
+            inner += 1
+
+function demonstrate_input():
     flex name : str
+    flex age : int
+    flex score : float
     name = input("Enter your name: ")
-    output("Hello, ", name)
+    age = input("Enter your age: ")
+    score = input("Enter your score: ")
+    output("Name: ", name, " Age: ", age, " Score: ", score)
+
+function demonstrate_output():
+    output("Welcome to EaC!")
+    output("System Version: ", 2.0)
+    output("Status: ", is_active, " Max Users: ", MAX_USERS)
+
+function demonstrate_assignment():
+    flex x = 10
+    flex y : float = 3.14
+    flex z : str = "test"
+    x = 20
+    y = x + 5.5
+    z = "modified"
+
+function demonstrate_conditions():
+    flex score = 85
+    flex grade : char
+    when score >= 90:
+        grade = 'A'
+        output("Excellent!")
+    when score >= 80:
+        grade = 'B'
+        output("Good job!")
+    else:
+        grade = 'C'
+        output("Keep trying!")
+
+function demonstrate_iteration():
+    for i in range(5):
+        output("Iteration: ", i)
+    
+    flex count = 0
+    while count < 3:
+        output("Count: ", count)
+        count += 1
+
+function main():
+    demonstrate_input()
+    demonstrate_output()
+    demonstrate_assignment()
+    demonstrate_conditions()
+    demonstrate_iteration()
+    demonstrate_nested_loops()
     demonstrate_arithmetic()
     demonstrate_logic()
     demonstrate_loops()
