@@ -17,6 +17,8 @@ const char* getTokenSpecial(TokenType type) {
         case TOKEN_ERROR:            return "ERROR";
         
         case TOKEN_NEWLINE:          return "NEWLINE";
+        case TOKEN_INDENT:           return "INDENT";     
+        case TOKEN_DEDENT:           return "DEDENT"; 
         
         // Literals
         case TOKEN_IDENTIFIER:       return "IDENTIFIER";
