@@ -1,0 +1,98 @@
+# ==========================================
+# EaC Comprehensive Test Suite
+# Covers: Lexical Tokens & Syntax Structures
+# ==========================================
+
+/* 
+   This is a block comment.
+   It spans multiple lines.
+   Testing: Comments, Whitespace handling
+*/
+
+# 1. Imports
+import math
+from utils import helper
+
+# 2. Global Constants & Variables
+fixed PI : float = 3.14159
+flex global_counter : int = 0
+fixed MAX_USERS = 100
+flex is_active : bool = true
+flex grade : char = 'A'
+flex message : str = "Welcome to EaC!"
+
+# 3. Function Declaration
+function calculate_area(radius: float): float:
+    # Arithmetic Operators: *, ^
+    return PI * (radius ^ 2)
+
+function update_status(status: bool):
+    # Assignment with 'to' keyword
+    flex current_status to status
+    
+    # Conditional Logic (when/else)
+    when current_status == true:
+        output("System is Active")
+    else:
+        output("System is Offline")
+
+# 4. Main Logic
+function main():
+    # Variable Declaration with 'to'
+    flex user_count to 10
+    flex total_score as float = 95.5  # Type hint in assignment 
+
+    # Input Statement
+    flex name = input("Enter your name: ")
+    output("Hello, ", name)
+
+    # 5. Arithmetic & Compound Assignment
+    user_count += 1
+    user_count -= 2
+    user_count *= 2
+    user_count /= 1
+    user_count %= 5
+    
+    # Floor division and Absolute value
+    flex x = 10 // 3
+    flex y = |-5|
+
+    # 6. Relational & Logical Expressions
+    flex is_valid = (user_count > 0) and (user_count <= MAX_USERS)
+    flex is_admin = false
+    
+    when is_valid or not is_admin:
+        output("Access Granted")
+
+    # 7. Iterative Statements
+    
+    # While Loop
+    flex i = 0
+    while i < 5:
+        output(i)
+        i += 1
+
+    # For Loop (Range)
+    for j in range(10):
+        when j % 2 == 0:
+            output(j, " is even")
+        else:
+            output(j, " is odd")
+
+    # For Loop (List Literal)
+    flex numbers = [1, 2, 3, 4, 5]
+    for num in numbers:
+        # Function Call
+        flex area = calculate_area(num)
+        output("Area for radius ", num, ": ", area)
+
+    # Break Statement
+    while true:
+        output("Running...")
+        break
+
+    update_status(false)
+    return 0
+
+# Run main
+main()
