@@ -1,0 +1,89 @@
+# ==========================================
+# EaC Comprehensive Test Suite
+# Covers: Lexical Tokens & Syntax Structures
+# ==========================================
+
+/* 
+   This is a block comment.
+   It spans multiple lines.
+   Testing: Comments, Whitespace handling
+*/
+
+# 1. Imports
+import math
+from utils import helper
+
+# 2. Global Constants & Variables
+fixed PI : float = 3.14159
+flex global_counter : int = 0
+fixed MAX_USERS = 100
+flex is_active : bool = true
+flex grade : char = 'A'
+flex message : str = "Welcome to EaC!"
+
+# 3. Function Declarations
+function calculate_area(radius: float): float:
+    return PI * (radius ^ 2)
+
+function update_status(status: bool):
+    flex current_status = status
+    when current_status == true:
+        output("System is Active")
+    else:
+        output("System is Offline")
+
+function demonstrate_arithmetic():
+    flex user_count = 10
+    user_count += 1
+    user_count -= 2
+    user_count *= 2
+    user_count /= 1
+    user_count %= 5
+    flex x = 10 // 3
+    flex y = |-5|
+    output("Arithmetic demo complete")
+
+function demonstrate_logic():
+    flex user_count = 5
+    flex is_valid = (user_count > 0) and (user_count <= MAX_USERS)
+    flex is_admin = false
+    when is_valid or not is_admin:
+        output("Access Granted")
+
+function demonstrate_loops():
+    flex i = 0
+    while i < 5:
+        output(i)
+        i += 1
+    
+    for j in range(10):
+        when j % 2 == 0:
+            output(j, " is even")
+        else:
+            output(j, " is odd")
+    
+    flex numbers = [1, 2, 3, 4, 5]
+    for num in numbers:
+        flex area = calculate_area(num)
+        output("Area for radius ", num, ": ", area)
+    
+    flex k = 0
+    while k < 10:
+        k += 1
+        when k == 3:
+            continue
+        when k == 8:
+            break
+        output(k)
+
+function main():
+    flex user_count = 10
+    flex total_score : float = 95.5
+    flex name : str
+    name = input("Enter your name: ")
+    output("Hello, ", name)
+    demonstrate_arithmetic()
+    demonstrate_logic()
+    demonstrate_loops()
+    update_status(false)
+    return 0
