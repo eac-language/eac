@@ -18,7 +18,7 @@ fixed PI : float = 3.14159
 flex global_counter : int = 0
 fixed MAX_USERS = 100
 flex is_active : bool = true
-flex grade : char = 'A'
+flex grade : char = 'A' =
 flex message : str = "Welcome to EaC!"
 
 # 3. Function Declarations
@@ -105,13 +105,13 @@ function demonstrate_input():
     flex score : float
     name = input("Enter your name: ")
     age = input("Enter your age: ")
-    score = input("Enter your score: ")
+    score = input("Enter your score: )
     output("Name: ", name, " Age: ", age, " Score: ", score)
 
 function demonstrate_output():
     output("Welcome to EaC!")
     output("System Version: ", 2.0)
-    output("Status: ", is_active, " Max Users: ", MAX_USERS)
+    output("Status: ", is_active, " Max Users: ", MAX_USERS)=
 
 function demonstrate_assignment():
     flex x = 10

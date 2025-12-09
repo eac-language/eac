@@ -14,6 +14,16 @@ struct Parser {
 
 // ===== Helper Functions =====
 
+static bool check(Parser* parser, TokenType type);
+static void errorAtCurrent(Parser* parser, const char* message);
+
+static void checkStatementEnd(Parser* parser) {
+    if (check(parser, TOKEN_NEWLINE) || check(parser, TOKEN_EOF) || check(parser, TOKEN_DEDENT)) {
+        return;
+    }
+    errorAtCurrent(parser, "Expected newline or end of statement");
+}
+
 static void errorAt(Parser* parser, Token* token, const char* message) {
     if (parser->panicMode) return;
     parser->panicMode = true;
@@ -23,10 +33,8 @@ static void errorAt(Parser* parser, Token* token, const char* message) {
     
     if (token->type == TOKEN_EOF) {
         fprintf(stderr, " at end");
-    } else if (token->type == TOKEN_ERROR) {
-        // Nothing
     } else {
-        fprintf(stderr, ", column %d", token->length);
+        fprintf(stderr, ", column %d", token->column);
     }
     
     fprintf(stderr, ": %s\n", message);
@@ -42,9 +50,8 @@ static void errorAt(Parser* parser, Token* token, const char* message) {
     }
 }
 
-static void error(Parser* parser, const char* message) {
-    errorAt(parser, &parser->previous, message);
-}
+
+
 
 static void errorAtCurrent(Parser* parser, const char* message) {
     errorAt(parser, &parser->current, message);
@@ -174,7 +181,7 @@ static char parseChar(Token token) {
 static ASTNode* expression(Parser* parser);
 static ASTNode* statement(Parser* parser);
 static ASTNodeList* statements(Parser* parser);
-static ASTNode* declaration(Parser* parser);
+
 
 // ===== Expression Parsing (Following Grammar) =====
 
@@ -428,6 +435,7 @@ static ASTNode* importStatement(Parser* parser) {
     ASTNode* node = createImportStmt(moduleName, fromModule, line);
     free(fromModule);
     free(moduleName);
+    checkStatementEnd(parser);
     return node;
 }
 
@@ -447,26 +455,12 @@ static ASTNode* outputStatement(Parser* parser) {
     
     consume(parser, TOKEN_RPAREN, "Expected ')' after output arguments");
     
+    checkStatementEnd(parser);
     return createOutputStmt(expressions, line);
 }
 
 // <INPUT_STMT> → <id> = input ( ) | <id> = input ( <STRING_LITERAL> )
-static ASTNode* inputStatement(Parser* parser, char* varName, int line) {
-    consume(parser, TOKEN_EQUAL, "Expected '=' in input statement");
-    consume(parser, TOKEN_INPUT, "Expected 'input' keyword");
-    consume(parser, TOKEN_LPAREN, "Expected '(' after 'input'");
-    
-    char* prompt = NULL;
-    if (match(parser, TOKEN_STRING)) {
-        prompt = parseString(parser->previous);
-    }
-    
-    consume(parser, TOKEN_RPAREN, "Expected ')' after input arguments");
-    
-    ASTNode* node = createInputStmt(varName, prompt, line);
-    free(prompt);
-    return node;
-}
+
 
 // <WHEN_STMT> → when <CONDITION> : <NEWLINE> <INDENT> <STATEMENTS> <DEDENT>
 // <WHEN_ELSE_STMT> → ... else : <NEWLINE> <INDENT> <STATEMENTS> <DEDENT>
@@ -618,25 +612,7 @@ static ASTNode* forStatement(Parser* parser) {
 }
 
 // <ASS_STMT> → <id> <ASSIGN_OP> <expr>
-static ASTNode* assignmentStatement(Parser* parser, char* varName, int line) {
-    // Check for compound assignment operators
-    if (match(parser, TOKEN_PLUS_EQUAL) || match(parser, TOKEN_MINUS_EQUAL) ||
-        match(parser, TOKEN_STAR_EQUAL) || match(parser, TOKEN_SLASH_EQUAL) ||
-        match(parser, TOKEN_PERCENT_EQUAL)) {
-        TokenType op = parser->previous.type;
-        ASTNode* value = expression(parser);
-        return createCompoundAssign(varName, op, value, line);
-    }
-    
-    // Regular assignment
-    if (match(parser, TOKEN_EQUAL)) {
-        ASTNode* value = expression(parser);
-        return createAssignment(varName, value, line);
-    }
-    
-    errorAtCurrent(parser, "Expected assignment operator");
-    return NULL;
-}
+
 
 // <DECL_STMT> → <VAR_TYPE> <id> [<TYPE_HINT>] [<ASSIGN> <expr>]
 static ASTNode* declarationStatement(Parser* parser) {
@@ -672,6 +648,7 @@ static ASTNode* declarationStatement(Parser* parser) {
     
     ASTNode* node = createVarDecl(isMutable, name, typeHint, initializer, line);
     free(name);
+    checkStatementEnd(parser);
     return node;
 }
 static ASTNode* functionDeclaration(Parser* parser) {
@@ -760,6 +737,7 @@ static ASTNode* returnStatement(Parser* parser) {
         value = expression(parser);
     }
     
+    checkStatementEnd(parser);
     return createReturnStmt(value, line);
 }
 
@@ -799,12 +777,16 @@ static ASTNode* statement(Parser* parser) {
 
     // <BREAK_STMT>
     if (match(parser, TOKEN_BREAK)) {
-        return createBreakStmt(parser->previous.line);
+        ASTNode* node = createBreakStmt(parser->previous.line);
+        checkStatementEnd(parser);
+        return node;
     }
 
     // <CONTINUE_STMT>
     if (match(parser, TOKEN_CONTINUE)) {
-        return createContinueStmt(parser->previous.line);
+        ASTNode* node = createContinueStmt(parser->previous.line);
+        checkStatementEnd(parser);
+        return node;
     }
     
     // <ITER_STMT>
@@ -840,12 +822,14 @@ if (match(parser, TOKEN_IDENTIFIER)) {
             ASTNode* node = createInputStmt(name, prompt, line);
             free(name);
             if (prompt) free(prompt);
+            checkStatementEnd(parser);
             return node;
         } else {
             // Regular assignment
             ASTNode* value = expression(parser);
             ASTNode* node = createAssignment(name, value, line);
             free(name);
+            checkStatementEnd(parser);
             return node;
         }
     }
@@ -859,6 +843,7 @@ if (match(parser, TOKEN_IDENTIFIER)) {
         ASTNode* value = expression(parser);
         ASTNode* node = createCompoundAssign(name, op, value, line);
         free(name);
+        checkStatementEnd(parser);
         return node;
     }
     
@@ -876,6 +861,7 @@ if (match(parser, TOKEN_IDENTIFIER)) {
         ASTNode* argList = createArgList(args, line);
         ASTNode* call = createCallExpr(name, argList, line);
         free(name);
+        checkStatementEnd(parser);
         return createExprStmt(call, line);
     }
     
@@ -912,7 +898,7 @@ static ASTNodeList* statements(Parser* parser) {
         }
         
         ASTNode* stmt = statement(parser);
-        if (stmt) {
+        if (stmt && !parser->panicMode) {
             addNode(stmtList, stmt);
         }
         

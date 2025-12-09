@@ -582,11 +582,16 @@ void printAST(ASTNode* node, int indent) {
         case AST_LITERAL:
             printf("LITERAL ");
             if (node->data.literal.literalType == TOKEN_INTEGER) {
-                printf("%lld\n", node->data.literal.value.intValue);
+                printf("(int) %lld\n", node->data.literal.value.intValue);
             } else if (node->data.literal.literalType == TOKEN_FLOAT) {
-                printf("%f\n", node->data.literal.value.floatValue);
+                printf("(float) %f\n", node->data.literal.value.floatValue);
             } else if (node->data.literal.literalType == TOKEN_STRING) {
-                printf("\"%s\"\n", node->data.literal.value.stringValue);
+                printf("(string) \"%s\"\n", node->data.literal.value.stringValue);
+            } else if (node->data.literal.literalType == TOKEN_CHAR) {
+                printf("(char) '%c'\n", node->data.literal.value.charValue);
+            } else if (node->data.literal.literalType == TOKEN_TRUE || 
+                       node->data.literal.literalType == TOKEN_FALSE) {
+                printf("(bool) %s\n", node->data.literal.value.boolValue ? "true" : "false");
             }
             break;
             
@@ -701,7 +706,66 @@ void printAST(ASTNode* node, int indent) {
                 }
             }
             break;
-            
+
+        case AST_COMPOUND_ASSIGN:
+            printf("COMPOUND_ASSIGN %s %s\n", 
+                   node->data.compoundAssign.varName,
+                   getOpSymbol(node->data.compoundAssign.op));
+            printAST(node->data.compoundAssign.value, indent + 1);
+            break;
+
+        case AST_INPUT_STMT:
+            printf("INPUT %s\n", node->data.inputStmt.varName);
+            if (node->data.inputStmt.prompt) {
+                printIndent(indent + 1);
+                printf("PROMPT: \"%s\"\n", node->data.inputStmt.prompt);
+            }
+            break;
+
+        case AST_WHILE_STMT:
+            printf("WHILE LOOP\n");
+            printIndent(indent + 1);
+            printf("CONDITION\n");
+            printAST(node->data.whileStmt.condition, indent + 2);
+            printIndent(indent + 1);
+            printf("BODY\n");
+            if (node->data.whileStmt.body) {
+                for (int i = 0; i < node->data.whileStmt.body->count; i++) {
+                    printAST(node->data.whileStmt.body->nodes[i], indent + 2);
+                }
+            }
+            break;
+
+        case AST_EXPR_STMT:
+            printAST(node->data.exprStmt.expression, indent);
+            break;
+
+        case AST_UNARY_OP:
+            printf("UNARY_OP %s\n", getOpSymbol(node->data.unaryOp.op));
+            printAST(node->data.unaryOp.operand, indent + 1);
+            break;
+
+        case AST_CALL_EXPR:
+            printf("CALL %s\n", node->data.callExpr.funcName);
+            printAST(node->data.callExpr.args, indent + 1);
+            break;
+
+        case AST_INDEX_EXPR:
+            printf("INDEX_EXPR %s\n", node->data.indexExpr.varName);
+            printIndent(indent + 1);
+            printf("INDEX\n");
+            printAST(node->data.indexExpr.index, indent + 2);
+            break;
+
+        case AST_ARG_LIST:
+            // Assuming this is used for arguments
+            if (node->data.list.items) {
+                for (int i = 0; i < node->data.list.items->count; i++) {
+                    printAST(node->data.list.items->nodes[i], indent);
+                }
+            }
+            break;
+
         default:
             printf("NODE_TYPE_%d\n", node->type);
             break;

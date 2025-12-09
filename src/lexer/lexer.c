@@ -90,6 +90,10 @@ struct Lexer {
     
     // Track if we just emitted a newline (NEW FIELD)
     bool justEmittedNewline;
+    
+    // Column tracking
+    int column;
+    int tokenStartColumn;
 };
 
 #define IS_ALPHA(c) (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || (c) == '_')
@@ -834,6 +838,7 @@ static Token makeToken(Lexer* lexer, TokenType type) {
     token.lexeme = lexer->start;
     token.length = (int)(lexer->current - lexer->start);
     token.line = lexer->line;
+    token.column = lexer->tokenStartColumn;
     return token;
 }
 
@@ -843,6 +848,7 @@ static Token errorToken(Lexer* lexer, const char* message) {
     token.lexeme = message;
     token.length = (int)strlen(message);
     token.line = lexer->line;
+    token.column = lexer->tokenStartColumn;
     return token;
 }
 
@@ -907,6 +913,7 @@ static Token makeIndentToken(Lexer* lexer) {
     token.lexeme = "<INDENT>";
     token.length = 8;
     token.line = lexer->line;
+    token.column = 1;
     return token;
 }
 
@@ -916,6 +923,7 @@ static Token makeDedentToken(Lexer* lexer) {
     token.lexeme = "<DEDENT>";
     token.length = 8;
     token.line = lexer->line;
+    token.column = 1;
     return token;
 }
 
@@ -948,6 +956,11 @@ static void handleIndentation(Lexer* lexer) {
     
     // Skip the whitespace
     while (*lexer->current == ' ' || *lexer->current == '\t') {
+        if (*lexer->current == '\t') {
+            lexer->column += 4;
+        } else {
+            lexer->column++;
+        }
         lexer->current++;
     }
     
@@ -998,22 +1011,22 @@ static void handleIndentation(Lexer* lexer) {
     // If spaces == currentLevel, no change
 }
 
-static bool isBlankOrComment(const char* ptr) {
-    // Skip whitespace
-    while (*ptr == ' ' || *ptr == '\t') {
-        ptr++;
-    }
-    // Check if line is blank or starts with comment
-    return (*ptr == '\n' || *ptr == '\0' || *ptr == '#');
-}
+
 
 static Token scanToken(Lexer* lexer) {
     // Skip whitespace (spaces, tabs, carriage returns - but NOT newlines)
     while (*lexer->current == ' ' || *lexer->current == '\r' || *lexer->current == '\t') {
+        if (*lexer->current == '\t') {
+            lexer->column += 4;
+        } else if (*lexer->current == ' ') {
+            lexer->column++;
+        }
+        // \r does not advance column
         lexer->current++;
     }
     
     lexer->start = lexer->current;
+    lexer->tokenStartColumn = lexer->column;
     
     // Handle EOF
     if (*lexer->current == '\0') {
@@ -1033,10 +1046,15 @@ static Token scanToken(Lexer* lexer) {
                 lexer->current = lastAcceptPos;
                 TokenType type = getTokenType(lastAccept);
                 
-                // Track newlines for line counting
+                // Track newlines and columns for line counting
                 for (const char* p = lexer->start; p < lexer->current; p++) {
                     if (*p == '\n') {
                         lexer->line++;
+                        lexer->column = 1;
+                    } else if (*p == '\t') {
+                        lexer->column += 4;
+                    } else {
+                        lexer->column++;
                     }
                 }
                 
@@ -1082,6 +1100,11 @@ static Token scanToken(Lexer* lexer) {
         for (const char* p = lexer->start; p < lexer->current; p++) {
             if (*p == '\n') {
                 lexer->line++;
+                lexer->column = 1;
+            } else if (*p == '\t') {
+                lexer->column += 4;
+            } else {
+                lexer->column++;
             }
         }
         
@@ -1102,6 +1125,11 @@ static Token scanToken(Lexer* lexer) {
         for (const char* p = lexer->start; p < lexer->current; p++) {
             if (*p == '\n') {
                 lexer->line++;
+                lexer->column = 1;
+            } else if (*p == '\t') {
+                lexer->column += 4;
+            } else {
+                lexer->column++;
             }
         }
         
@@ -1132,7 +1160,11 @@ Lexer* initLexer(const char* source) {
     lexer->source = source;
     lexer->start = source;
     lexer->current = source;
+    lexer->start = source;
+    lexer->current = source;
     lexer->line = 1;
+    lexer->column = 1;
+    lexer->tokenStartColumn = 1;
     
     // Initialize indentation tracking
     lexer->indentCount = 0;
