@@ -118,11 +118,6 @@ test-all: $(TARGET)
 	@echo "Check the output/ directory for detailed token tables."
 	@echo ""
 
-TARGET_BIN := $(TARGET)$(EXEEXT)
-OBJ_CLEAN := $(subst /,\,$(OBJ))
-
 clean:
-	@if exist $(TARGET_BIN) del /f /q $(TARGET_BIN) >nul 2>&1
-	@if exist $(TARGET) del /f /q $(TARGET) >nul 2>&1
-	@if not "$(OBJ_CLEAN)"=="" del /f /q $(OBJ_CLEAN) >nul 2>&1
-	@if exist output rmdir /s /q output >nul 2>&1
+	rm -f $(TARGET) $(TARGET).exe $(OBJ)
+	rm -rf output
