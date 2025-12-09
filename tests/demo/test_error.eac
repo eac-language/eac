@@ -1,3 +1,0 @@
-# test_bad_indent.eac
-when x > 0:
-output("no indent")
