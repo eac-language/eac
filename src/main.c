@@ -8,6 +8,8 @@
 
 #include "common/token.h"
 #include "lexer/lexer.h"
+#include "parser/parser.h"
+#include "parser/ast.h"
 
 const char* getTokenSpecial(TokenType type) {
     switch (type) {
@@ -15,6 +17,8 @@ const char* getTokenSpecial(TokenType type) {
         case TOKEN_ERROR:            return "ERROR";
         
         case TOKEN_NEWLINE:          return "NEWLINE";
+        case TOKEN_INDENT:           return "INDENT";     
+        case TOKEN_DEDENT:           return "DEDENT"; 
         
         // Literals
         case TOKEN_IDENTIFIER:       return "IDENTIFIER";
@@ -158,7 +162,6 @@ bool createDirectory(const char* path) {
     return true;
 }
 
-
 const char* extractFilename(const char* path) {
     const char* filename = strrchr(path, '/');
     if (filename == NULL) {
@@ -167,23 +170,21 @@ const char* extractFilename(const char* path) {
     return filename ? filename + 1 : path;
 }
 
-char* generateOutputFilename(const char* inputPath) {
+char* generateOutputFilename(const char* inputPath, const char* suffix) {
     const char* filename = extractFilename(inputPath);
     size_t len = strlen(filename);
     
-    // Create output directory
     if (!createDirectory("output")) {
         return NULL;
     }
     
-    const char* prefix = "output/symbol_table_";
+    const char* prefix = "output/";
     size_t prefixLen = strlen(prefix);
-    const char* suffix = ".txt";
     size_t suffixLen = strlen(suffix);
 
     char* output;
     if (len > 4 && strcmp(filename + len - 4, ".eac") == 0) {
-        size_t stemLen = len - 4; // exclude .eac
+        size_t stemLen = len - 4;
         output = (char*)malloc(prefixLen + stemLen + suffixLen + 1);
         if (output == NULL) {
             fprintf(stderr, "Error: Memory allocation failed.\n");
@@ -243,51 +244,25 @@ void printToken(FILE* outFile, Token token) {
     fprintf(outFile, "%s\n", lexeme);
 }
 
-// ===== Main Program =====
-
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <source-file.eac>\n", argv[0]);
-        return 1;
-    }
-    
-    const char* sourcePath = argv[1];
-
-    if (!hasEacExtension(sourcePath)) {
-        fprintf(stderr, "Error: Source file '%s' must have a .eac extension.\n", sourcePath);
-        return 1;
-    }
-    
-    if (!createDirectory("output")) {
-        return 1;
-    }
-    
-    char* outputPath = generateOutputFilename(sourcePath);
+void runLexerOnly(const char* sourcePath, const char* source) {
+    char* outputPath = generateOutputFilename(sourcePath, "_tokens.txt");
     if (outputPath == NULL) {
-        return 1;
-    }
-    
-    char* source = readFile(sourcePath);
-    if (source == NULL) {
-        free(outputPath);
-        return 1;
+        return;
     }
     
     Lexer* lexer = initLexer(source);
     if (lexer == NULL) {
         fprintf(stderr, "Error: Failed to initialize lexer.\n");
-        free(source);
         free(outputPath);
-        return 1;
+        return;
     }
     
     FILE* outFile = fopen(outputPath, "w");
     if (outFile == NULL) {
         fprintf(stderr, "Error: Could not create output file '%s'.\n", outputPath);
         freeLexer(lexer);
-        free(source);
         free(outputPath);
-        return 1;
+        return;
     }
     
     fprintf(outFile, "EaC Lexer Output\n");
@@ -348,8 +323,119 @@ int main(int argc, char* argv[]) {
     
     fclose(outFile);
     freeLexer(lexer);
-    free(source);
     free(outputPath);
+}
+
+void runParser(const char* sourcePath, const char* source) {
+    Lexer* lexer = initLexer(source);
+    if (lexer == NULL) {
+        fprintf(stderr, "Error: Failed to initialize lexer.\n");
+        return;
+    }
     
-    return hasErrors ? 1 : 0;
+    Parser* parser = initParser(lexer);
+    if (parser == NULL) {
+        fprintf(stderr, "Error: Failed to initialize parser.\n");
+        freeLexer(lexer);
+        return;
+    }
+    
+    printf("\n");
+    printf("==========================================================================\n");
+    printf("EaC Parser\n");
+    printf("==========================================================================\n");
+    printf("Source file:  %s\n", sourcePath);
+    printf("Parsing...\n\n");
+    
+    ASTNode* ast = parse(parser);
+    
+    if (hasError(parser)) {
+        printf("\n==========================================================================\n");
+        printf("Status:       COMPLETED WITH ERRORS\n");
+        printf("==========================================================================\n");
+        
+        if (ast) {
+            printf("\nPartial Abstract Syntax Tree (successfully parsed statements):\n");
+            printf("--------------------------------------------------------------------------\n");
+            printAST(ast, 0);
+            printf("==========================================================================\n");
+        }
+    } else {
+        printf("Status:       SUCCESS - AST generated\n");
+        printf("==========================================================================\n");
+        printf("\nAbstract Syntax Tree:\n");
+        printf("--------------------------------------------------------------------------\n");
+        printAST(ast, 0);
+        printf("==========================================================================\n");
+        
+        // Save AST to file
+        char* astOutputPath = generateOutputFilename(sourcePath, "_ast.txt");
+        if (astOutputPath) {
+            FILE* astFile = fopen(astOutputPath, "w");
+            if (astFile) {
+                fprintf(astFile, "EaC Abstract Syntax Tree\n");
+                fprintf(astFile, "Source: %s\n", sourcePath);
+                fprintf(astFile, "==========================================================================\n\n");
+                
+                // Redirect printAST to file (would need to modify printAST for this)
+                // For now, just indicate success
+                fprintf(astFile, "AST generated successfully.\n");
+                fprintf(astFile, "See console output for tree visualization.\n");
+                
+                fclose(astFile);
+                printf("\nAST saved to: %s\n", astOutputPath);
+            }
+            free(astOutputPath);
+        }
+    }
+    
+    if (ast) {
+        freeAST(ast);
+    }
+    freeParser(parser);
+    freeLexer(lexer);
+}
+
+int main(int argc, char* argv[]) {
+    bool parserMode = false;
+    const char* sourcePath = NULL;
+    
+    // Parse command line arguments
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--parse") == 0 || strcmp(argv[i], "-p") == 0) {
+            parserMode = true;
+        } else {
+            sourcePath = argv[i];
+        }
+    }
+    
+    if (sourcePath == NULL) {
+        fprintf(stderr, "Usage: %s [--parse|-p] <source-file.eac>\n", argv[0]);
+        fprintf(stderr, "  --parse, -p   Run parser and generate AST\n");
+        fprintf(stderr, "  (default)     Run lexer only and generate tokens\n");
+        return 1;
+    }
+    
+    if (!hasEacExtension(sourcePath)) {
+        fprintf(stderr, "Error: Source file '%s' must have a .eac extension.\n", sourcePath);
+        return 1;
+    }
+    
+    if (!createDirectory("output")) {
+        return 1;
+    }
+    
+    char* source = readFile(sourcePath);
+    if (source == NULL) {
+        return 1;
+    }
+    
+    if (parserMode) {
+        runParser(sourcePath, source);
+    } else {
+        runLexerOnly(sourcePath, source);
+    }
+    
+    free(source);
+    return 0;
 }

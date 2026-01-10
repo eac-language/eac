@@ -14,9 +14,14 @@ make
 make test-all
 ```
 
-### Run a Specific Test
+### Run Parser Tests
 ```bash
-make test test_identifiers.eac
+make test-parser
+```
+
+### Run Lexer Tests
+```bash
+make test-lexer
 ```
 
 ### Clean Build
@@ -35,78 +40,56 @@ make clean
 
 ---
 
-## Features
+## Core Features
 
-### Core Language Features
 - ✅ **Dynamic Variables** - `flex` keyword for mutable variables
 - ✅ **Constants** - `fixed` keyword for immutable values
 - ✅ **Type Hints** - Optional type annotations (int, float, str, bool, char)
 - ✅ **Control Flow** - `when`/`else` conditionals, `while`/`for` loops
 - ✅ **Functions** - First-class function support
 - ✅ **Comments** - Single-line (#) and multi-line (/* */) comments
-- ✅ **Noise Words** - Polite keywords (please, kindly, maybe) for readability
-
-### Operators
-- **Arithmetic**: `+`, `-`, `*`, `/`, `%`, `^` (exponent), `|` (absolute)
-- **Relational**: `<`, `>`, `<=`, `>=`, `==`, `!=`
-- **Logical**: `and`, `or`, `not`
-- **Assignment**: `=`, `+=`, `-=`, `*=`, `/=`, `%=`
-
-### Example Code
-```eac
-flex age: int = 25
-fixed PI: float = 3.14159
-flex name: str = "Alice"
-
-when age > 18:
-    output("Adult")
-else:
-    output("Minor")
-
-flex counter = 0
-while counter < 5:
-    output(counter)
-    counter += 1
-
-function greet(person):
-    output("Hello, ", person)
-    return
-
-please greet("World")
-```
+- ✅ **Noise Words** - Readability keywords (`to`, `of`, `then`, `each`, `as`) which are ignored by the parser.
 
 ---
 
-## Test Suite
+## Technical Architecture & Code Tracing
 
-### Comprehensive Test Coverage (494+ Test Cases)
+### 1. Lexical Analysis (`src/lexer/`)
+The **Lexer** transforms raw source code into a stream of tokens.
 
-The compiler includes a comprehensive test suite covering all 10 criteria:
+**Step-by-Step Execution:**
+1.  **Initialization**: `initLexer(source)` sets up the lexer state, pointing to the start of the source string.
+2.  **Scanning Loop**: The main loop calls `scanToken()` repeatedly.
+    *   **Whitespace Handling**: `scanToken` skips spaces. If it encounters a newline, it calculates indentation.
+    *   **Indentation Tracking**: The lexer maintains a stack of indentation levels. If indentation increases, it emits `TOKEN_INDENT`. If it decreases, it emits one or more `TOKEN_DEDENT` tokens.
+    *   **State Machine**: Characters are processed through a finite state machine (FSM) to identify tokens:
+        *   `"` triggers string state.
+        *   Digits trigger number state.
+        *   Letters trigger identifier/keyword state.
+    *   **Keyword Matching**: Identifiers are checked against a trie or hash map to determine if they are reserved keywords (e.g., `flex`, `when`).
+3.  **Token Generation**: valid lexemes are packaged into `Token` structs containing the type, lexeme string, line number, and column number.
 
-| # | Criterion | File | Cases |
-|---|-----------|------|-------|
-| 1 | File Type Validation | test_file.{py,txt,c} | 3 files |
-| 2 | Identifiers | test_identifiers.eac | 10 |
-| 3 | Keywords | test_all_keywords.eac | 190 |
-| 4 | Reserved Words | test_reserved_words.eac | 50 |
-| 5 | Constant Values | test_constant_values.eac | 50 |
-| 6 | Noise Words | test_noise_words.eac | 10 |
-| 7 | Comments | test_all_comments.eac | 10 |
-| 8a | Arithmetic Operators | test_arithmetic_operators.eac | 70 |
-| 8b | Boolean Operators | test_boolean_operators.eac | 90 |
-| 9 | Delimiters | test_delimiters.eac | 10 |
-| 10 | Invalid Tokens | test_all_invalid.eac | 10 |
+### 2. Parsing (`src/parser/`)
+The **Parser** consumes tokens to build an Abstract Syntax Tree (AST).
 
-### Run All Tests
-```bash
-make test-all
-```
+**Step-by-Step Execution:**
+1.  **Initialization**: `initParser(lexer)` prepares the parser.
+2.  **Recursive Descent**: The `parse()` function calls `statements()`, which recursively calls functions for specific grammar rules:
+    *   `statements()` -> `statement()`
+    *   `statement()` parses specific constructs like `impl_varDecl`, `impl_ifStmt`, etc.
+3.  **Expression Parsing**: Uses a precedence climbing algorithm (or similar) to handle operator precedence (e.g., `*` binds tighter than `+`).
+4.  **Error Handling**:
+    *   If a syntax error occurs (e.g., missing expected token), `errorAt()` is called.
+    *   The parser enters "panic mode" to suppress cascading errors.
+    *   `synchronize()` skips tokens until a statement boundary (newline/semicolon) is found to recover.
+    *   **Statement Termination**: `checkStatementEnd()` ensures statements end with a newline or EOF, preventing malformed constructs from entering the AST.
+5.  **AST Construction**: Successful parses create `ASTNode` structures (e.g., `AST_BINARY_OP`, `AST_VAR_DECL`).
 
-This command will:
-1. Test file type validation (reject non-.eac files)
-2. Run all 10 criterion tests
-3. Generate token tables in `output/` directory
-4. Display test progress and results
+### 3. Testing (`tests/`)
+The project includes a robust test suite.
+
+*   `tests/demo/`: Contains demonstration files (e.g., `test_main.eac`, `test_criteria_compliance.eac`).
+*   `tests/`: Root tests for specific language features.
 
 ---
 
@@ -115,140 +98,40 @@ This command will:
 ```
 eac/
 ├── src/
-│   ├── main.c              # Test harness
+│   ├── main.c              # Entry point
 │   ├── common/
 │   │   └── token.h         # Token definitions
 │   ├── lexer/
 │   │   ├── lexer.h         # Lexer interface
-│   │   └── lexer.c         # Lexer implementation
-│   ├── parser/             # Parser (future)
-│   └── semantic/           # Semantic analyzer (future)
+│   │   └── lexer.c         # Lexer implementation & FSM
+│   ├── parser/             # Parser module
+│   │   ├── parser.c        # Recursive descent parser
+│   │   ├── parser.h        # Parser interface
+│   │   ├── ast.c           # AST node creation & printing
+│   │   └── ast.h           # AST structure definitions
 ├── tests/
-│   ├── test_identifiers.eac
-│   ├── test_all_keywords.eac
-│   ├── test_reserved_words.eac
-│   ├── test_constant_values.eac
-│   ├── test_noise_words.eac
-│   ├── test_all_comments.eac
-│   ├── test_arithmetic_operators.eac
-│   ├── test_boolean_operators.eac
-│   ├── test_delimiters.eac
-│   ├── test_all_invalid.eac
-│   ├── test_indentation.eac
-│   ├── test_comprehensive_all.eac
-│   ├── test_file.py
-│   ├── test_file.txt
-│   └── test_file.c
-├── output/                 # Generated token tables
-├── docs/
-│   ├── DOCUMENTATION.md    # Language specification
-│   ├── DEV_GUIDE.md        # Development guide
-│   └── QUICK_START.md      # Quick start guide
+│   ├── demo/               # Demo & compliance tests
+│   │   ├── test_main.eac
+│   │   └── test_criteria_compliance.eac
+│   ├── parser/             # Parser-specific tests
+│   └── ...                 # Other feature tests
+├── output/                 # Generated artifacts (symbol tables, AST dumps)
+├── docs/                   # Documentation
 ├── Makefile                # Build system
 └── README.md               # This file
 ```
 
 ---
 
-## Output
-
-### Token Tables
-
-All test results are saved in `output/` directory:
-
-```
-output/symbol_table_<test_name>.txt
-```
-
-Each file contains a formatted table:
-```
-Line   Lexeme              Token               Token Special
-==========================================================================
-
-1      flex                KEYWORD             FLEX
-1      age                 IDENTIFIER          IDENTIFIER
-1      :                   DELIMITER           COLON
-1      int                 HINT_KEYWORD        HINT_INT
-1      =                   ASSIGNMENT          EQUAL
-1      25                  INTEGER             INTEGER
-...
-```
-
----
-
-## Documentation
-
-- **[DOCUMENTATION.md](docs/DOCUMENTATION.md)** - Complete language specification
-- **[DEV_GUIDE.md](docs/DEV_GUIDE.md)** - Development guide
-- **[QUICK_START.md](docs/QUICK_START.md)** - Quick start guide
-- **[RUN_ALL_TESTS.md](RUN_ALL_TESTS.md)** - Test execution guide
-- **[TEST_SUITE_COMPLETION_REPORT.md](TEST_SUITE_COMPLETION_REPORT.md)** - Test coverage report
-- **[CLEANUP_SUMMARY.md](CLEANUP_SUMMARY.md)** - Recent cleanup changes
-
----
-
-## Development
-
-### Requirements
-- GCC compiler
-- Make
-- Windows, Linux, or macOS
-
-### Build
-```bash
-make        # Build the compiler
-make clean  # Clean build artifacts
-```
-
-### Testing
-```bash
-make test-all                    # Run all tests
-make test test_identifiers.eac   # Run specific test
-```
-
-### Adding New Tests
-1. Create a new `.eac` file in `tests/`
-2. Add test cases following the existing patterns
-3. Run `make test <your_test>.eac`
-4. Check `output/symbol_table_<your_test>.txt` for results
-
----
-
 ## Current Status
 
-✅ **Lexical Analyzer** - Complete and fully tested  
-🔄 **Parser** - In development  
-⏳ **Semantic Analyzer** - Planned  
-⏳ **Code Generator** - Planned
-
----
-
-## Keywords (19 total)
-
-`flex`, `fixed`, `when`, `else`, `output`, `while`, `for`, `in`, `break`, `continue`, `return`, `function`, `import`, `from`, `true`, `false`, `and`, `or`, `not`
-
-## Reserved Words (5 total)
-
-`int`, `float`, `str`, `bool`, `char`
-
-## Noise Words (3 total)
-
-`please`, `kindly`, `maybe`
-
----
-
-## License
-
-Educational project for compiler design coursework.
+*   ✅ **Lexical Analyzer**: Complete. accurate tokenization including complex indentation handling.
+*   ✅ **Parser**: Functional. Generates AST for declarations, expressions, control flow, and functions. Robust error handling implemented.
+*   ⏳ **Semantic Analyzer**: Planned.
+*   ⏳ **Code Generator**: Planned.
 
 ---
 
 ## Authors
 
 EaC Compiler Development Team
-
----
-
-**Version:** 1.0  
-**Last Updated:** November 4, 2025  
-**Status:** ✅ Lexical Analysis Phase Complete
