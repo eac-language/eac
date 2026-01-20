@@ -347,18 +347,52 @@ void runParser(const char* sourcePath, const char* source) {
     printf("Source file:  %s\n", sourcePath);
     printf("Parsing...\n\n");
     
+
+    char* astOutputPath = generateOutputFilename(sourcePath, "_ast.txt");
+    FILE* astFile = NULL;
+    
+    if (astOutputPath) {
+        astFile = fopen(astOutputPath, "w");
+        if (astFile) {
+            fprintf(astFile, "EaC Abstract Syntax Tree\n");
+            fprintf(astFile, "Source: %s\n", sourcePath);
+            fprintf(astFile, "==========================================================================\n\n");
+            
+            
+            setParserErrorLog(astFile);
+        }
+    }
+    
+    
     ASTNode* ast = parse(parser);
+    
+    
+    setParserErrorLog(NULL);
     
     if (hasError(parser)) {
         printf("\n==========================================================================\n");
         printf("Status:       COMPLETED WITH ERRORS\n");
         printf("==========================================================================\n");
         
+        if (astFile) {
+            fprintf(astFile, "\n");
+            fprintf(astFile, "==========================================================================\n");
+            fprintf(astFile, "Status: COMPLETED WITH ERRORS\n");
+            fprintf(astFile, "==========================================================================\n\n");
+        }
+        
         if (ast) {
             printf("\nPartial Abstract Syntax Tree (successfully parsed statements):\n");
             printf("--------------------------------------------------------------------------\n");
             printAST(ast, 0);
             printf("==========================================================================\n");
+            
+            if (astFile) {
+                fprintf(astFile, "Partial Abstract Syntax Tree:\n");
+                fprintf(astFile, "--------------------------------------------------------------------------\n");
+                printASTToFile(ast, 0, astFile);
+                fprintf(astFile, "==========================================================================\n");
+            }
         }
     } else {
         printf("Status:       SUCCESS - AST generated\n");
@@ -368,25 +402,22 @@ void runParser(const char* sourcePath, const char* source) {
         printAST(ast, 0);
         printf("==========================================================================\n");
         
-        // Save AST to file
-        char* astOutputPath = generateOutputFilename(sourcePath, "_ast.txt");
-        if (astOutputPath) {
-            FILE* astFile = fopen(astOutputPath, "w");
-            if (astFile) {
-                fprintf(astFile, "EaC Abstract Syntax Tree\n");
-                fprintf(astFile, "Source: %s\n", sourcePath);
-                fprintf(astFile, "==========================================================================\n\n");
-                
-                // Redirect printAST to file (would need to modify printAST for this)
-                // For now, just indicate success
-                fprintf(astFile, "AST generated successfully.\n");
-                fprintf(astFile, "See console output for tree visualization.\n");
-                
-                fclose(astFile);
-                printf("\nAST saved to: %s\n", astOutputPath);
-            }
-            free(astOutputPath);
+        if (astFile) {
+            fprintf(astFile, "Status: SUCCESS\n\n");
+            fprintf(astFile, "Abstract Syntax Tree:\n");
+            fprintf(astFile, "--------------------------------------------------------------------------\n");
+            printASTToFile(ast, 0, astFile);
+            fprintf(astFile, "==========================================================================\n");
         }
+    }
+    
+    if (astFile) {
+        fclose(astFile);
+        printf("\nAST saved to: %s\n", astOutputPath);
+    }
+    
+    if (astOutputPath) {
+        free(astOutputPath);
     }
     
     if (ast) {
@@ -400,7 +431,7 @@ int main(int argc, char* argv[]) {
     bool parserMode = false;
     const char* sourcePath = NULL;
     
-    // Parse command line arguments
+    
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--parse") == 0 || strcmp(argv[i], "-p") == 0) {
             parserMode = true;

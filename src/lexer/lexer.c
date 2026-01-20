@@ -991,7 +991,7 @@ static void handleIndentation(Lexer* lexer) {
         Token indent = makeIndentToken(lexer);
         enqueueToken(lexer, indent);
     } else if (spaces < currentLevel) {
-        // DEDENT (possibly multiple)
+        // DEDENT
         while (lexer->indentCount > 0 && currentIndent(lexer) > spaces) {
             popIndent(lexer);
             Token dedent = makeDedentToken(lexer);

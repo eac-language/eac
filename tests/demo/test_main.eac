@@ -1,5 +1,262 @@
 # ==========================================
-# EaC Comprehensive Test Suite
+# EaC LEXER TEST CASE
+# Tests ALL Lexical Elements
+# ==========================================
+
+# ==========================================
+# SECTION 1: KEYWORDS 
+# ==========================================
+flex variable_test = 1
+fixed constant_test = 2
+
+when variable_test > 0:
+    output("when keyword test")
+else:
+    output("else keyword test")
+
+function declaration_test():
+    return 0
+
+import module_test
+from source_test import helper
+
+while variable_test > 0:
+    variable_test -= 1
+    break
+
+for iteration_test in range(5):
+    when iteration_test == 2:
+        continue
+    output(iteration_test)
+
+flex membership_test = 5 in [1, 2, 3, 4, 5]
+flex exit_test = 1
+flex skip_test = 2
+flex value_test = input("Enter value: ")
+
+# ==========================================
+# SECTION 2: RESERVED WORDS 
+# ==========================================
+flex int_var : int = 42
+flex float_var : float = 3.14
+flex str_var : str = "text"
+flex bool_var : bool = true
+flex char_var : char = 'A'
+flex another_bool = false
+
+# ==========================================
+# SECTION 3: NOISE WORDS 
+# ==========================================
+flex x to 10
+flex age of int = 25
+when x > 5 then:
+    output("noise word test")
+for each item in range(5):
+    output(item)
+flex result as float = 10 / 3
+
+# ==========================================
+# SECTION 4: IDENTIFIERS 
+# ==========================================
+flex a = 1
+flex _underscore_start = 2
+flex CamelCase = 3
+flex snake_case_example = 4
+flex mix123Numbers = 5
+flex __double_underscore__ = 6
+flex single_letter_A = 7
+flex UPPERCASE_CONSTANT = 8
+flex number_at_end_123 = 9
+flex _123_numbers_after_underscore = 10
+
+# ==========================================
+# SECTION 5: CONSTANT VALUES 
+# ==========================================
+
+# Integer Constants
+fixed int_zero = 0
+fixed int_positive = 42
+fixed int_large = 999999
+
+# Float Constants
+fixed float_simple = 3.14
+fixed float_zero = 0.0
+fixed float_scientific = 2.5
+
+# String Constants
+fixed empty_string = ""
+fixed simple_string = "Hello"
+fixed string_with_spaces = "Hello World"
+fixed string_with_special = "Test!@#$%"
+
+# Character Constants
+fixed char_a = 'a'
+fixed char_Z = 'Z'
+fixed char_digit = '5'
+fixed char_special = '!'
+
+# ==========================================
+# SECTION 6: COMMENTS 
+# ==========================================
+
+# This is a single-line comment
+flex comment_test = 1 # Inline comment
+
+/* This is a multi-line comment
+   spanning multiple lines
+   testing block comment recognition */
+
+/*
+Nested information
+Another line
+*/
+
+# ==========================================
+# SECTION 7: ARITHMETIC OPERATORS (All 7)
+# ==========================================
+flex add_result = 5 + 3
+flex sub_result = 10 - 4
+flex mul_result = 6 * 7
+flex div_result = 20 / 4
+flex mod_result = 17 % 5
+flex exp_result = 2 ^ 8
+flex floor_div_result = 17 // 3
+
+# ==========================================
+# SECTION 8: RELATIONAL & EQUALITY OPERATORS 
+# ==========================================
+flex less_than = 5 < 10
+flex greater_than = 10 > 5
+flex equal_to = 5 == 5
+flex less_equal = 5 <= 5
+flex greater_equal = 10 >= 5
+flex not_equal = 5 != 10
+
+# ==========================================
+# SECTION 9: LOGICAL OPERATORS 
+# ==========================================
+flex and_result = true and false
+flex or_result = true or false
+flex not_result = not true
+
+# ==========================================
+# SECTION 10: ASSIGNMENT OPERATORS
+# ==========================================
+flex assign_test = 10
+assign_test += 5
+assign_test -= 3
+assign_test *= 2
+assign_test /= 4
+assign_test %= 3
+
+# ==========================================
+# SECTION 11: DELIMITERS AND BRACKETS 
+# ==========================================
+flex parentheses_test = (5 + 3) * 2
+flex array_test = [1, 2, 3, 4, 5]
+flex list_access = array_test[0]
+when true:
+    output("colon delimiter test")
+output("comma", "test", "here")
+flex decimal_test = 3.14159
+
+# ==========================================
+# SECTION 12: SPECIAL SYMBOLS
+# ==========================================
+flex underscore_test = _variable
+flex absolute_value = |-5|
+
+# ==========================================
+# SECTION 13: WHITESPACE AND INDENTATION
+# ==========================================
+when true:
+    flex indented_var = 1
+    when false:
+        flex double_indent = 2
+        output("nested indentation")
+    output("back to first indent")
+
+# ==========================================
+# SECTION 14: COMPLEX EXPRESSIONS
+# ==========================================
+flex complex_math = ((10 + 5) * 2 - 3) / 4 ^ 2 % 3
+flex complex_bool = (x > 5) and (y < 10) or not (z == 0)
+flex combined = (a + b) * (c - d) / (e ^ 2)
+
+# ==========================================
+# SECTION 15: FUNCTION DECLARATIONS
+# ==========================================
+function test_function(param1: int, param2: float): bool:
+    flex local_var = param1 + param2
+    return true
+
+function no_return_function():
+    output("no return value")
+
+# ==========================================
+# SECTION 16: CONTROL FLOW STRUCTURES
+# ==========================================
+
+# When-Else (If-Else)
+when x > 0:
+    output("positive")
+else:
+    output("non-positive")
+
+# When-Else When-Else (If-Elif-Else)
+when x > 10:
+    output("large")
+else when x > 5:
+    output("medium")
+else when x > 0:
+    output("small")
+else:
+    output("zero or negative")
+
+# While Loop
+flex counter = 0
+while counter < 5:
+    output(counter)
+    counter += 1
+
+# For Loop
+for i in range(10):
+    output(i)
+
+for item in [1, 2, 3]:
+    output(item)
+
+# Loop Control
+for i in range(10):
+    when i == 3:
+        continue
+    when i == 8:
+        break
+    output(i)
+
+# ==========================================
+# SECTION 17: INPUT/OUTPUT STATEMENTS
+# ==========================================
+flex user_input = input("Enter value: ")
+output("Hello, World!")
+output("Value:", 42)
+output("Multiple", "values", "here")
+
+# ==========================================
+# SECTION 18: IMPORT STATEMENTS
+# ==========================================
+import math
+import system
+from utils import helper
+from library import func1
+
+# ==========================================
+# END OF TEST CASE LEXER
+# ==========================================
+
+
+# ==========================================
+# EaC Test Suite LEXER & PARSER
 # Covers: Lexical Tokens & Syntax Structures
 # ==========================================
 
@@ -15,10 +272,10 @@ from utils import helper
 
 # 2. Global Constants & Variables
 fixed PI : float = 3.14159
-flex global_counter : int = 0
+flex global_counter : int = 0 
 fixed MAX_USERS = 100
 flex is_active : bool = true
-flex grade : char = 'A' =
+flex grade : char = 'A' 
 flex message : str = "Welcome to EaC!"
 
 # 3. Function Declarations
@@ -111,7 +368,7 @@ function demonstrate_input():
 function demonstrate_output():
     output("Welcome to EaC!")
     output("System Version: ", 2.0)
-    output("Status: ", is_active, " Max Users: ", MAX_USERS)=
+    output("Status: ", is_active, " Max Users: ", MAX_USERS)
 
 function demonstrate_assignment():
     flex x = 10
@@ -124,16 +381,33 @@ function demonstrate_assignment():
 function demonstrate_conditions():
     flex score = 85
     flex grade : char
+    flex gwa = 2.5
+    flex a = 10
+    
+    
+    when a > 5:
+        output(a)
+    
+    
+    when (gwa >= 1.00) and (gwa <= 3.00):
+        output("Passing Grade!")
+    else:
+        output("Failing Grade!")
+    
+    
     when score >= 90:
         grade = 'A'
         output("Excellent!")
-    when score >= 80:
+    else when score >= 80:
         grade = 'B'
         output("Good job!")
-    else:
+    else when score >= 70:
         grade = 'C'
         output("Keep trying!")
-
+    else:
+        grade = 'F'
+        output("Need improvement!")
+        
 function demonstrate_iteration():
     for i in range(5):
         output("Iteration: ", i)

@@ -4,6 +4,12 @@
 #include <stdbool.h>
 #include "parser.h"
 
+FILE* g_parserErrorLog = NULL;
+
+void setParserErrorLog(FILE* logFile) {
+    g_parserErrorLog = logFile;
+}
+
 struct Parser {
     Lexer* lexer;
     Token current;
@@ -29,29 +35,51 @@ static void errorAt(Parser* parser, Token* token, const char* message) {
     parser->panicMode = true;
     parser->hadError = true;
     
-    fprintf(stderr, "Error at line %d", token->line);
+    char errorMsg[512];
+    int offset = 0;
+    
+    offset += snprintf(errorMsg + offset, sizeof(errorMsg) - offset, 
+                      "Error at line %d", token->line);
     
     if (token->type == TOKEN_EOF) {
-        fprintf(stderr, " at end");
+        offset += snprintf(errorMsg + offset, sizeof(errorMsg) - offset, " at end");
     } else {
-        fprintf(stderr, ", column %d", token->column);
+        offset += snprintf(errorMsg + offset, sizeof(errorMsg) - offset, 
+                          ", column %d", token->column);
     }
     
-    fprintf(stderr, ": %s\n", message);
+    offset += snprintf(errorMsg + offset, sizeof(errorMsg) - offset, 
+                      ": %s\n", message);
+    
+    fprintf(stderr, "%s", errorMsg);
+    
+    if (g_parserErrorLog) {
+        fprintf(g_parserErrorLog, "%s", errorMsg);
+        fflush(g_parserErrorLog);
+    }
     
     // Show the problematic line context
     if (token->type != TOKEN_EOF && token->type != TOKEN_ERROR) {
-        fprintf(stderr, "  %.*s\n", token->length, token->lexeme);
-        fprintf(stderr, "  ");
+        char contextMsg[256];
+        offset = 0;
+        
+        offset += snprintf(contextMsg + offset, sizeof(contextMsg) - offset,
+                          "  %.*s\n", token->length, token->lexeme);
+        offset += snprintf(contextMsg + offset, sizeof(contextMsg) - offset, "  ");
+        
         for (int i = 0; i < token->length && i < 5; i++) {
-            fprintf(stderr, "^");
+            offset += snprintf(contextMsg + offset, sizeof(contextMsg) - offset, "^");
         }
-        fprintf(stderr, "\n");
+        offset += snprintf(contextMsg + offset, sizeof(contextMsg) - offset, "\n");
+        
+        fprintf(stderr, "%s", contextMsg);
+        
+        if (g_parserErrorLog) {
+            fprintf(g_parserErrorLog, "%s", contextMsg);
+            fflush(g_parserErrorLog);
+        }
     }
 }
-
-
-
 
 static void errorAtCurrent(Parser* parser, const char* message) {
     errorAt(parser, &parser->current, message);
@@ -63,13 +91,7 @@ static void advance(Parser* parser) {
     for (;;) {
         parser->current = getNextToken(parser->lexer);
         
-        // Skip noise words and comments (as per spec)
-        if (parser->current.type == TOKEN_AS ||
-            parser->current.type == TOKEN_EACH ||
-            parser->current.type == TOKEN_OF ||
-            parser->current.type == TOKEN_TO ||
-            parser->current.type == TOKEN_THEN ||
-            parser->current.type == TOKEN_COMMENT_LINE ||
+        if (parser->current.type == TOKEN_COMMENT_LINE ||
             parser->current.type == TOKEN_COMMENT_BLOCK) {
             continue;
         }
@@ -102,7 +124,6 @@ static void synchronize(Parser* parser) {
     parser->panicMode = false;
     
     while (parser->current.type != TOKEN_EOF) {
-        // Synchronization tokens as per spec
         if (parser->previous.type == TOKEN_NEWLINE) return;
         if (parser->previous.type == TOKEN_DEDENT) return;
         
@@ -116,7 +137,7 @@ static void synchronize(Parser* parser) {
             case TOKEN_ELSE:
                 return;
             default:
-                ; // Do nothing
+                ; 
         }
         
         advance(parser);
@@ -125,7 +146,6 @@ static void synchronize(Parser* parser) {
 
 static void skipNewlines(Parser* parser) {
     while (match(parser, TOKEN_NEWLINE)) {
-        // Skip
     }
 }
 
@@ -182,7 +202,6 @@ static ASTNode* expression(Parser* parser);
 static ASTNode* statement(Parser* parser);
 static ASTNodeList* statements(Parser* parser);
 
-
 // ===== Expression Parsing (Following Grammar) =====
 
 // <PRIMARY> → <LITERAL> | <id> | ( <ARITH_EXPR> ) | | <ARITH_EXPR> |
@@ -217,11 +236,25 @@ static ASTNode* primary(Parser* parser) {
         return createCharLiteral(value, parser->previous.line);
     }
     
+    if (match(parser, TOKEN_INPUT)) {
+        int line = parser->previous.line;
+        consume(parser, TOKEN_LPAREN, "Expected '(' after 'input'");
+        
+        char* prompt = NULL;
+        if (match(parser, TOKEN_STRING)) {
+            prompt = parseString(parser->previous);
+        }
+        
+        consume(parser, TOKEN_RPAREN, "Expected ')' after input arguments");
+        ASTNode* node = createInputExpr(prompt, line);
+        if (prompt) free(prompt);
+        return node;
+    }
+    
     if (match(parser, TOKEN_IDENTIFIER)) {
         char* name = tokenToString(parser->previous);
         int line = parser->previous.line;
         
-        // Check for function call
         if (match(parser, TOKEN_LPAREN)) {
             ASTNodeList* args = createNodeList();
             
@@ -238,7 +271,6 @@ static ASTNode* primary(Parser* parser) {
             return call;
         }
         
-        // Check for array indexing
         if (match(parser, TOKEN_LBRACKET)) {
             ASTNode* index = expression(parser);
             consume(parser, TOKEN_RBRACKET, "Expected ']' after index");
@@ -291,7 +323,7 @@ static ASTNode* power(Parser* parser) {
     if (match(parser, TOKEN_CARET)) {
         TokenType op = parser->previous.type;
         int line = parser->previous.line;
-        ASTNode* right = power(parser);  // Right-associative
+        ASTNode* right = power(parser);  
         expr = createBinaryOp(op, expr, right, line);
     }
     
@@ -339,16 +371,53 @@ static ASTNode* arithmeticExpr(Parser* parser) {
     return expr;
 }
 
-// <RELATIONAL_EXPR> → <ARITH_EXPR> <REL_OP> <ARITH_EXPR>
-static ASTNode* relationalExpr(Parser* parser) {
+// <CAST_EXPR> → <ARITH_EXPR> | <ARITH_EXPR> as <TYPE>
+static ASTNode* castExpr(Parser* parser) {
     ASTNode* expr = arithmeticExpr(parser);
+    
+    if (match(parser, TOKEN_AS)) {
+        int line = parser->previous.line;
+        
+        if (check(parser, TOKEN_HINT_INT) || check(parser, TOKEN_HINT_FLOAT) ||
+            check(parser, TOKEN_HINT_STR) || check(parser, TOKEN_HINT_BOOL) ||
+            check(parser, TOKEN_HINT_CHAR)) {
+            
+            TokenType targetType = parser->current.type;
+            advance(parser);
+            
+            expr = createCastExpr(expr, targetType, line);
+        } else {
+            errorAtCurrent(parser, "Expected type after 'as'");
+        }
+    }
+    
+    return expr;
+}
+
+// <MEMBERSHIP_EXPR> → <CAST_EXPR> | <CAST_EXPR> in <CAST_EXPR>
+static ASTNode* membershipExpr(Parser* parser) {
+    ASTNode* expr = castExpr(parser);
+    
+    if (match(parser, TOKEN_IN)) {
+        TokenType op = parser->previous.type;
+        int line = parser->previous.line;
+        ASTNode* right = castExpr(parser);
+        expr = createBinaryOp(op, expr, right, line);
+    }
+    
+    return expr;
+}
+
+// <RELATIONAL_EXPR> → <MEMBERSHIP_EXPR> <REL_OP> <MEMBERSHIP_EXPR>
+static ASTNode* relationalExpr(Parser* parser) {
+    ASTNode* expr = membershipExpr(parser);
     
     if (match(parser, TOKEN_LESS) || match(parser, TOKEN_LESS_EQUAL) ||
         match(parser, TOKEN_GREATER) || match(parser, TOKEN_GREATER_EQUAL) ||
         match(parser, TOKEN_EQUAL_EQUAL) || match(parser, TOKEN_BANG_EQUAL)) {
         TokenType op = parser->previous.type;
         int line = parser->previous.line;
-        ASTNode* right = arithmeticExpr(parser);
+        ASTNode* right = membershipExpr(parser);
         expr = createBinaryOp(op, expr, right, line);
     }
     
@@ -360,7 +429,6 @@ static ASTNode* boolFactor(Parser* parser);
 static ASTNode* logicalExpr(Parser* parser);
 
 static ASTNode* boolFactor(Parser* parser) {
-    // not <BOOL_FACTOR>
     if (match(parser, TOKEN_NOT)) {
         TokenType op = parser->previous.type;
         int line = parser->previous.line;
@@ -410,11 +478,12 @@ static ASTNode* expression(Parser* parser) {
 }
 
 // ===== Statement Parsing =====
-// <IMPORT_STMT> -> import <id> | from <id> import <id>
+
+// <IMPORT_STMT> → import <id> | from <id> import <id>
 static ASTNode* importStatement(Parser* parser) {
     int line = parser->previous.line;
     
-    // Case 1: import moduleName
+    // import moduleName
     if (parser->previous.type == TOKEN_IMPORT) {
         consume(parser, TOKEN_IDENTIFIER, "Expected module name after 'import'");
         char* moduleName = tokenToString(parser->previous);
@@ -423,14 +492,13 @@ static ASTNode* importStatement(Parser* parser) {
         return node;
     } 
     
-    // Case 2: from moduleName import target
-    // (We enter here if match(TOKEN_FROM) was called in statement())
+    // from moduleName import target
     consume(parser, TOKEN_IDENTIFIER, "Expected module name after 'from'");
     char* fromModule = tokenToString(parser->previous);
     
     consume(parser, TOKEN_IMPORT, "Expected 'import' after module name");
     consume(parser, TOKEN_IDENTIFIER, "Expected identifier to import");
-    char* moduleName = tokenToString(parser->previous); // This is the specific item being imported
+    char* moduleName = tokenToString(parser->previous);
     
     ASTNode* node = createImportStmt(moduleName, fromModule, line);
     free(fromModule);
@@ -459,9 +527,6 @@ static ASTNode* outputStatement(Parser* parser) {
     return createOutputStmt(expressions, line);
 }
 
-// <INPUT_STMT> → <id> = input ( ) | <id> = input ( <STRING_LITERAL> )
-
-
 // <WHEN_STMT> → when <CONDITION> : <NEWLINE> <INDENT> <STATEMENTS> <DEDENT>
 // <WHEN_ELSE_STMT> → ... else : <NEWLINE> <INDENT> <STATEMENTS> <DEDENT>
 static ASTNode* conditionalStatement(Parser* parser) {
@@ -469,6 +534,9 @@ static ASTNode* conditionalStatement(Parser* parser) {
     
     // Rule 44: when <CONDITION> : <NEWLINE> <INDENT> <STATEMENTS> <DEDENT>
     ASTNode* cond = condition(parser);
+    
+    match(parser, TOKEN_THEN); 
+    
     consume(parser, TOKEN_COLON, "Expected ':' after condition in 'when' statement");
     consume(parser, TOKEN_NEWLINE, "Expected newline after ':' in 'when' statement");
     consume(parser, TOKEN_INDENT, "Expected indentation after 'when:'");
@@ -481,12 +549,14 @@ static ASTNode* conditionalStatement(Parser* parser) {
     
     skipNewlines(parser);
     
-    // Handle else when (elwhen) chain
     while (match(parser, TOKEN_ELSE)) {
         if (match(parser, TOKEN_WHEN)) {
             // Rule 50-51: else when <CONDITION> : <NEWLINE> <INDENT> <STATEMENTS> <DEDENT>
             int elwhenLine = parser->previous.line;
             ASTNode* elwhenCond = condition(parser);
+            
+            match(parser, TOKEN_THEN); 
+            
             consume(parser, TOKEN_COLON, "Expected ':' after condition in 'else when' statement");
             consume(parser, TOKEN_NEWLINE, "Expected newline after ':' in 'else when' statement");
             consume(parser, TOKEN_INDENT, "Expected indentation after 'else when:'");
@@ -495,7 +565,6 @@ static ASTNode* conditionalStatement(Parser* parser) {
             
             consume(parser, TOKEN_DEDENT, "Expected dedent after 'else when' block");
             
-            // Create nested if for else when
             ASTNode* elwhenStmt = createIfStmt(elwhenCond, elwhenBody, NULL, elwhenLine);
             
             if (elseBranch == NULL) {
@@ -541,6 +610,8 @@ static ASTNode* whileStatement(Parser* parser) {
 static ASTNode* forStatement(Parser* parser) {
     int line = parser->previous.line;
     
+    match(parser, TOKEN_EACH); 
+    
     if (!match(parser, TOKEN_IDENTIFIER)) {
         errorAtCurrent(parser, "Expected variable name after 'for'");
         return NULL;
@@ -558,9 +629,7 @@ static ASTNode* forStatement(Parser* parser) {
         advance(parser);
         char* name = tokenToString(nameToken);
         
-        // Check if this is a range() call
         if (strcmp(name, "range") == 0 && match(parser, TOKEN_LPAREN)) {
-            // Parse range arguments (can be 1, 2, or 3 arguments)
             ASTNodeList* args = createNodeList();
             
             if (!check(parser, TOKEN_RPAREN)) {
@@ -571,16 +640,13 @@ static ASTNode* forStatement(Parser* parser) {
             
             consume(parser, TOKEN_RPAREN, "Expected ')' after range arguments");
             
-            // Create the range call expression
             ASTNode* argList = createArgList(args, nameToken.line);
             iterable = createCallExpr("range", argList, nameToken.line);
         } else {
-            // Just a regular identifier
             iterable = createIdentifier(name, nameToken.line);
         }
         free(name);
     } else if (match(parser, TOKEN_LBRACKET)) {
-        // List literal as iterable
         ASTNodeList* elements = createNodeList();
         
         if (!check(parser, TOKEN_RBRACKET)) {
@@ -611,9 +677,6 @@ static ASTNode* forStatement(Parser* parser) {
     return node;
 }
 
-// <ASS_STMT> → <id> <ASSIGN_OP> <expr>
-
-
 // <DECL_STMT> → <VAR_TYPE> <id> [<TYPE_HINT>] [<ASSIGN> <expr>]
 static ASTNode* declarationStatement(Parser* parser) {
     bool isMutable = parser->previous.type == TOKEN_FLEX;
@@ -628,8 +691,18 @@ static ASTNode* declarationStatement(Parser* parser) {
     ASTNode* typeHint = NULL;
     ASTNode* initializer = NULL;
     
-    // Optional type hint: : <DATA_TYPE>
-    if (match(parser, TOKEN_COLON)) {
+    if (match(parser, TOKEN_OF) || match(parser, TOKEN_AS)) {
+        if (check(parser, TOKEN_HINT_INT) || check(parser, TOKEN_HINT_FLOAT) ||
+            check(parser, TOKEN_HINT_STR) || check(parser, TOKEN_HINT_BOOL) ||
+            check(parser, TOKEN_HINT_CHAR)) {
+            TokenType hintType = parser->current.type;
+            advance(parser);
+            typeHint = createTypeHint(hintType, parser->previous.line);
+        } else {
+            errorAtCurrent(parser, "Expected type hint after 'of' or 'as'");
+        }
+    }
+    else if (match(parser, TOKEN_COLON)) {
         if (check(parser, TOKEN_HINT_INT) || check(parser, TOKEN_HINT_FLOAT) ||
             check(parser, TOKEN_HINT_STR) || check(parser, TOKEN_HINT_BOOL) ||
             check(parser, TOKEN_HINT_CHAR)) {
@@ -641,8 +714,10 @@ static ASTNode* declarationStatement(Parser* parser) {
         }
     }
     
-    // Optional initializer: <ASSIGN> <expr>
-    if (match(parser, TOKEN_EQUAL)) {
+    if (match(parser, TOKEN_TO)) {
+        initializer = expression(parser);
+    }
+    else if (match(parser, TOKEN_EQUAL)) {
         initializer = expression(parser);
     }
     
@@ -651,25 +726,23 @@ static ASTNode* declarationStatement(Parser* parser) {
     checkStatementEnd(parser);
     return node;
 }
+
+// Function Declaration
 static ASTNode* functionDeclaration(Parser* parser) {
     int line = parser->previous.line;
     
-    // 1. Parse Name
     consume(parser, TOKEN_IDENTIFIER, "Expected function name.");
     char* name = tokenToString(parser->previous);
     
-    // 2. Parse Parameters: (a: int, b: int)
     consume(parser, TOKEN_LPAREN, "Expected '(' after function name.");
     ASTNodeList* paramsList = createNodeList();
     
     if (!check(parser, TOKEN_RPAREN)) {
         do {
-            // Param Name
             consume(parser, TOKEN_IDENTIFIER, "Expected parameter name.");
             char* paramName = tokenToString(parser->previous);
             int paramLine = parser->previous.line;
             
-            // Param Type Hint
             ASTNode* paramType = NULL;
             if (match(parser, TOKEN_COLON)) {
                  if (check(parser, TOKEN_HINT_INT) || check(parser, TOKEN_HINT_FLOAT) ||
@@ -682,7 +755,6 @@ static ASTNode* functionDeclaration(Parser* parser) {
                 }
             }
             
-            // Create param as a VarDecl (fixed=true usually for params)
             ASTNode* param = createVarDecl(false, paramName, paramType, NULL, paramLine);
             addNode(paramsList, param);
             free(paramName);
@@ -692,11 +764,8 @@ static ASTNode* functionDeclaration(Parser* parser) {
     consume(parser, TOKEN_RPAREN, "Expected ')' after parameters.");
     ASTNode* paramsNode = createParamList(paramsList, line);
 
-    // 3. Parse Return Type: : int
     ASTNode* returnType = NULL;
     if (check(parser, TOKEN_COLON)) {
-        // We need to peek ahead to see if this is a return type or the block start
-        
         consume(parser, TOKEN_COLON, "Expected ':'");
         
         if (check(parser, TOKEN_HINT_INT) || check(parser, TOKEN_HINT_FLOAT) ||
@@ -707,15 +776,12 @@ static ASTNode* functionDeclaration(Parser* parser) {
             advance(parser);
             returnType = createTypeHint(type, line);
             
-            // If we had a return type, we need ANOTHER colon for the block start
             consume(parser, TOKEN_COLON, "Expected ':' before function body.");
         } 
-        // If it wasn't a type, we assume that first colon was for the block start
     } else {
         consume(parser, TOKEN_COLON, "Expected ':' before function body.");
     }
 
-    // 4. Parse Body: function body must be indented
     consume(parser, TOKEN_NEWLINE, "Expected newline before function body.");
     consume(parser, TOKEN_INDENT, "Expected indentation for function body.");
     
@@ -732,7 +798,6 @@ static ASTNode* returnStatement(Parser* parser) {
     int line = parser->previous.line;
     ASTNode* value = NULL;
 
-    // Check if there is an expression after 'return'.
     if (!check(parser, TOKEN_NEWLINE) && !check(parser, TOKEN_DEDENT) && !check(parser, TOKEN_EOF)) {
         value = expression(parser);
     }
@@ -741,55 +806,46 @@ static ASTNode* returnStatement(Parser* parser) {
     return createReturnStmt(value, line);
 }
 
-// <STATEMENT> → <FUNCTION_STMT> | <DECL_STMT> | <ASS_STMT> | <INPUT_STMT> | <OUTPUT_STMT> | <COND_STMT> | <BREAK_STMT> | <RETURN_STMT> | <ITER_STMT> |
+// <STATEMENT> → <FUNCTION_STMT> | <DECL_STMT> | <ASS_STMT> | <INPUT_STMT> | <OUTPUT_STMT> | <COND_STMT> | <BREAK_STMT> | <RETURN_STMT> | <ITER_STMT>
 static ASTNode* statement(Parser* parser) {
     skipNewlines(parser);
 
-    // <IMPORT_STMT>
     if (match(parser, TOKEN_IMPORT) || match(parser, TOKEN_FROM)) {
         return importStatement(parser);
     }
     
-    // <FUNCTION_STMT>
     if (match(parser, TOKEN_FUNCTION)) {
         return functionDeclaration(parser);
     }
 
-    // <RETURN_STMT>
     if (match(parser, TOKEN_RETURN)) {
         return returnStatement(parser);
     }
     
-    // <DECL_STMT>
     if (match(parser, TOKEN_FLEX) || match(parser, TOKEN_FIXED)) {
         return declarationStatement(parser);
     }
     
-    // <OUTPUT_STMT>
     if (match(parser, TOKEN_OUTPUT)) {
         return outputStatement(parser);
     }
     
-    // <COND_STMT>
     if (match(parser, TOKEN_WHEN)) {
         return conditionalStatement(parser);
     }
 
-    // <BREAK_STMT>
     if (match(parser, TOKEN_BREAK)) {
         ASTNode* node = createBreakStmt(parser->previous.line);
         checkStatementEnd(parser);
         return node;
     }
 
-    // <CONTINUE_STMT>
     if (match(parser, TOKEN_CONTINUE)) {
         ASTNode* node = createContinueStmt(parser->previous.line);
         checkStatementEnd(parser);
         return node;
     }
     
-    // <ITER_STMT>
     if (match(parser, TOKEN_WHILE)) {
         return whileStatement(parser);
     }
@@ -798,77 +854,75 @@ static ASTNode* statement(Parser* parser) {
         return forStatement(parser);
     }
     
-    // <ASS_STMT> or <INPUT_STMT> (both start with identifier)
-if (match(parser, TOKEN_IDENTIFIER)) {
-    char* name = tokenToString(parser->previous);
-    int line = parser->previous.line;
-    
-    // Check for assignment or input
-    if (check(parser, TOKEN_EQUAL)) {
-        advance(parser); // consume '='
+    // <ASS_STMT> → <id> <ASSIGN_OP> <expr>
+    // <ASSIGN_OP> → = | += | -= | *= | /= | %=
+    // <INPUT_STMT> → <id> = input () | <id> = input ( <STRING_LITERAL> )
+    if (match(parser, TOKEN_IDENTIFIER)) {
+        char* name = tokenToString(parser->previous);
+        int line = parser->previous.line;
         
-        // Check if this is an input statement
-        if (check(parser, TOKEN_INPUT)) {
-            advance(parser); // consume 'input'
-            consume(parser, TOKEN_LPAREN, "Expected '(' after 'input'");
+        if (check(parser, TOKEN_EQUAL)) {
+            advance(parser);
             
-            char* prompt = NULL;
-            if (match(parser, TOKEN_STRING)) {
-                prompt = parseString(parser->previous);
+            if (check(parser, TOKEN_INPUT)) {
+                advance(parser);
+                consume(parser, TOKEN_LPAREN, "Expected '(' after 'input'");
+                
+                char* prompt = NULL;
+                if (match(parser, TOKEN_STRING)) {
+                    prompt = parseString(parser->previous);
+                }
+                
+                consume(parser, TOKEN_RPAREN, "Expected ')' after input arguments");
+                
+                ASTNode* node = createInputStmt(name, prompt, line);
+                free(name);
+                if (prompt) free(prompt);
+                checkStatementEnd(parser);
+                return node;
+            } else {
+                
+                ASTNode* value = expression(parser);
+                ASTNode* node = createAssignment(name, value, line);
+                free(name);
+                checkStatementEnd(parser);
+                return node;
+            }
+        }
+        
+        if (check(parser, TOKEN_PLUS_EQUAL) || check(parser, TOKEN_MINUS_EQUAL) ||
+            check(parser, TOKEN_STAR_EQUAL) || check(parser, TOKEN_SLASH_EQUAL) ||
+            check(parser, TOKEN_PERCENT_EQUAL)) {
+            TokenType op = parser->current.type;
+            advance(parser);
+            ASTNode* value = expression(parser);
+            ASTNode* node = createCompoundAssign(name, op, value, line);
+            free(name);
+            checkStatementEnd(parser);
+            return node;
+        }
+        
+        if (match(parser, TOKEN_LPAREN)) {
+            ASTNodeList* args = createNodeList();
+            
+            if (!check(parser, TOKEN_RPAREN)) {
+                do {
+                    addNode(args, expression(parser));
+                } while (match(parser, TOKEN_COMMA));
             }
             
-            consume(parser, TOKEN_RPAREN, "Expected ')' after input arguments");
-            
-            ASTNode* node = createInputStmt(name, prompt, line);
-            free(name);
-            if (prompt) free(prompt);
-            checkStatementEnd(parser);
-            return node;
-        } else {
-            // Regular assignment
-            ASTNode* value = expression(parser);
-            ASTNode* node = createAssignment(name, value, line);
+            consume(parser, TOKEN_RPAREN, "Expected ')' after arguments");
+            ASTNode* argList = createArgList(args, line);
+            ASTNode* call = createCallExpr(name, argList, line);
             free(name);
             checkStatementEnd(parser);
-            return node;
-        }
-    }
-    
-    // Compound assignment
-    if (check(parser, TOKEN_PLUS_EQUAL) || check(parser, TOKEN_MINUS_EQUAL) ||
-        check(parser, TOKEN_STAR_EQUAL) || check(parser, TOKEN_SLASH_EQUAL) ||
-        check(parser, TOKEN_PERCENT_EQUAL)) {
-        TokenType op = parser->current.type;
-        advance(parser);
-        ASTNode* value = expression(parser);
-        ASTNode* node = createCompoundAssign(name, op, value, line);
-        free(name);
-        checkStatementEnd(parser);
-        return node;
-    }
-    
-    // Expression statement (like function call)
-    if (match(parser, TOKEN_LPAREN)) {
-        ASTNodeList* args = createNodeList();
-        
-        if (!check(parser, TOKEN_RPAREN)) {
-            do {
-                addNode(args, expression(parser));
-            } while (match(parser, TOKEN_COMMA));
+            return createExprStmt(call, line);
         }
         
-        consume(parser, TOKEN_RPAREN, "Expected ')' after arguments");
-        ASTNode* argList = createArgList(args, line);
-        ASTNode* call = createCallExpr(name, argList, line);
+        errorAtCurrent(parser, "Expected assignment or function call");
         free(name);
-        checkStatementEnd(parser);
-        return createExprStmt(call, line);
+        return NULL;
     }
-    
-    errorAtCurrent(parser, "Expected assignment or function call");
-    free(name);
-    return NULL;
-}
     
     errorAtCurrent(parser, "Expected statement");
     return NULL;
@@ -882,11 +936,8 @@ static ASTNodeList* statements(Parser* parser) {
            !check(parser, TOKEN_ELSE) && 
            !check(parser, TOKEN_DEDENT)) {
         
-        // Skip newlines and any unexpected indent tokens
         while (match(parser, TOKEN_NEWLINE) || check(parser, TOKEN_INDENT)) {
             if (check(parser, TOKEN_INDENT)) {
-                // We shouldn't see INDENT here in the middle of a block
-                // This might be from a comment line, skip it
                 advance(parser);
             }
         }
@@ -910,9 +961,6 @@ static ASTNodeList* statements(Parser* parser) {
     return stmtList;
 }
 
-
-// ===== Public API =====
-
 Parser* initParser(Lexer* lexer) {
     if (!lexer) return NULL;
     
@@ -934,17 +982,13 @@ ASTNode* parse(Parser* parser) {
     
     ASTNodeList* stmts = statements(parser);
     
-    // Skip any trailing DEDENT tokens before EOF
     while (match(parser, TOKEN_DEDENT)) {
-        // Skip
     }
     
     if (!match(parser, TOKEN_EOF)) {
         errorAtCurrent(parser, "Expected end of file");
     }
     
-    // CHANGE: Always return the AST, even if there were errors
-    // The caller can check hasError() to decide what to do
     return createProgram(stmts);
 }
 

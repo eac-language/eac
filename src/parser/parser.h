@@ -1,11 +1,19 @@
 #ifndef EAC_PARSER_H
 #define EAC_PARSER_H
 
+#include <stdio.h>
 #include "../common/token.h"
 #include "../lexer/lexer.h"
 #include "ast.h"
 
 typedef struct Parser Parser;
+
+/**
+ * setParserErrorLog - Set file for logging parser errors
+ * 
+ * @param logFile   File pointer to write errors to (or NULL to disable)
+ */
+void setParserErrorLog(FILE* logFile);
 
 /**
  * initParser - Initialize a new parser with a lexer
@@ -38,4 +46,4 @@ bool hasError(Parser* parser);
  */
 void freeParser(Parser* parser);
 
-#endif // EAC_PARSER_H
+#endif

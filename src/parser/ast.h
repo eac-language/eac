@@ -2,6 +2,7 @@
 #define EAC_AST_H
 
 #include "../common/token.h"
+#include <stdio.h>
 
 // Forward declarations
 typedef struct ASTNode ASTNode;
@@ -14,38 +15,40 @@ typedef enum {
     AST_STATEMENT_LIST,
     
     // Declarations
-    AST_VAR_DECL,           // flex/fixed variable declaration
-    AST_FUNCTION_DECL,      // function declaration
-    AST_IMPORT_STMT,        // import statement
+    AST_VAR_DECL,           
+    AST_FUNCTION_DECL,      
+    AST_IMPORT_STMT,        
     
     // Statements
-    AST_ASSIGNMENT,         // variable assignment
-    AST_COMPOUND_ASSIGN,    // +=, -=, etc.
-    AST_OUTPUT_STMT,        // output statement
-    AST_INPUT_STMT,         // input statement
-    AST_IF_STMT,            // when/else statement
-    AST_WHILE_STMT,         // while loop
-    AST_FOR_STMT,           // for loop
-    AST_RETURN_STMT,        // return statement
-    AST_BREAK_STMT,         // break statement
-    AST_CONTINUE_STMT,      // continue statement
-    AST_EXPR_STMT,          // expression statement
+    AST_ASSIGNMENT,         
+    AST_COMPOUND_ASSIGN,    
+    AST_OUTPUT_STMT,        
+    AST_INPUT_STMT,         
+    AST_IF_STMT,            
+    AST_WHILE_STMT,         
+    AST_FOR_STMT,           
+    AST_RETURN_STMT,        
+    AST_BREAK_STMT,         
+    AST_CONTINUE_STMT,      
+    AST_EXPR_STMT,          
     
     // Expressions
-    AST_BINARY_OP,          // binary operations
-    AST_UNARY_OP,           // unary operations
-    AST_CALL_EXPR,          // function call
-    AST_INDEX_EXPR,         // array indexing
-    AST_LITERAL,            // literals (int, float, string, char, bool)
-    AST_IDENTIFIER,         // variable reference
-    AST_LIST_LITERAL,       // list literal [1, 2, 3]
+    AST_BINARY_OP,          
+    AST_UNARY_OP,           
+    AST_CALL_EXPR,          
+    AST_INDEX_EXPR,         
+    AST_LITERAL,            
+    AST_IDENTIFIER,         
+    AST_LIST_LITERAL,       
+    AST_CAST_EXPR,          
+    AST_INPUT_EXPR,         
     
     // Type hints
-    AST_TYPE_HINT,          // type annotation
+    AST_TYPE_HINT,          
     
     // Parameters & Arguments
-    AST_PARAM_LIST,         // function parameters
-    AST_ARG_LIST,           // function arguments
+    AST_PARAM_LIST,         
+    AST_ARG_LIST,           
 } ASTNodeType;
 
 // ===== Value Union for Literals =====
@@ -57,7 +60,7 @@ typedef union {
     bool boolValue;
 } LiteralValue;
 
-// ===== AST Node List (for managing multiple nodes) =====
+// ===== AST Node List =====
 struct ASTNodeList {
     ASTNode** nodes;
     int count;
@@ -77,24 +80,24 @@ struct ASTNode {
         
         // Variable Declaration
         struct {
-            bool isMutable;         // flex=true, fixed=false
+            bool isMutable;        
             char* name;
-            ASTNode* typeHint;      // optional
-            ASTNode* initializer;   // optional
+            ASTNode* typeHint;      
+            ASTNode* initializer;   
         } varDecl;
         
         // Function Declaration
         struct {
             char* name;
-            ASTNode* params;        // AST_PARAM_LIST
-            ASTNode* returnType;    // optional type hint
+            ASTNode* params;        
+            ASTNode* returnType;    
             ASTNodeList* body;
         } funcDecl;
         
         // Import Statement
         struct {
             char* moduleName;
-            char* fromModule;       // optional (for "from X import Y")
+            char* fromModule;       
         } importStmt;
         
         // Assignment
@@ -106,7 +109,7 @@ struct ASTNode {
         // Compound Assignment
         struct {
             char* varName;
-            TokenType op;           // +=, -=, *=, /=, %=
+            TokenType op;          
             ASTNode* value;
         } compoundAssign;
         
@@ -118,14 +121,14 @@ struct ASTNode {
         // Input Statement
         struct {
             char* varName;
-            char* prompt;           // optional prompt string
+            char* prompt;           
         } inputStmt;
         
         // If Statement
         struct {
             ASTNode* condition;
             ASTNodeList* thenBranch;
-            ASTNodeList* elseBranch;    // optional
+            ASTNodeList* elseBranch;    
         } ifStmt;
         
         // While Loop
@@ -143,7 +146,7 @@ struct ASTNode {
         
         // Return Statement
         struct {
-            ASTNode* value;         // optional
+            ASTNode* value;         
         } returnStmt;
         
         // Expression Statement
@@ -167,7 +170,7 @@ struct ASTNode {
         // Function Call
         struct {
             char* funcName;
-            ASTNode* args;          // AST_ARG_LIST
+            ASTNode* args;          
         } callExpr;
         
         // Index Expression
@@ -192,9 +195,20 @@ struct ASTNode {
             ASTNodeList* elements;
         } listLiteral;
         
+        // Cast Expression
+        struct {
+            ASTNode* expression;
+            TokenType targetType;
+        } castExpr;
+        
+        // Input Expression
+        struct {
+            char* prompt;
+        } inputExpr;
+        
         // Type Hint
         struct {
-            TokenType hintType;     // TOKEN_HINT_INT, etc.
+            TokenType hintType;     
         } typeHint;
         
         // Parameter/Argument List
@@ -244,6 +258,8 @@ ASTNode* createCharLiteral(char value, int line);
 ASTNode* createBoolLiteral(bool value, int line);
 ASTNode* createIdentifier(char* name, int line);
 ASTNode* createListLiteral(ASTNodeList* elements, int line);
+ASTNode* createCastExpr(ASTNode* expr, TokenType targetType, int line);
+ASTNode* createInputExpr(char* prompt, int line); 
 
 // Type hints
 ASTNode* createTypeHint(TokenType hintType, int line);
@@ -255,7 +271,8 @@ ASTNode* createArgList(ASTNodeList* args, int line);
 // Memory management
 void freeAST(ASTNode* node);
 
-// AST Visualization (for debugging)
+// AST Visualization
 void printAST(ASTNode* node, int indent);
+void printASTToFile(ASTNode* node, int indent, FILE* file);
 
-#endif // EAC_AST_H
+#endif

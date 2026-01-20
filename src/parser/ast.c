@@ -60,7 +60,7 @@ static char* dupString(const char* str) {
 // ===== Helper to convert token type to symbol string =====
 const char* getOpSymbol(TokenType op) {
     switch (op) {
-        // Arithmetic
+        
         case TOKEN_PLUS:        return "+";
         case TOKEN_MINUS:       return "-";
         case TOKEN_STAR:        return "*";
@@ -69,7 +69,7 @@ const char* getOpSymbol(TokenType op) {
         case TOKEN_CARET:       return "^";
         case TOKEN_FLOOR_DIV:   return "//";
         
-        // Relational
+        
         case TOKEN_EQUAL_EQUAL: return "==";
         case TOKEN_BANG_EQUAL:  return "!=";
         case TOKEN_LESS:        return "<";
@@ -77,12 +77,13 @@ const char* getOpSymbol(TokenType op) {
         case TOKEN_GREATER:     return ">";
         case TOKEN_GREATER_EQUAL: return ">=";
         
-        // Logical
+        
         case TOKEN_AND:         return "and";
         case TOKEN_OR:          return "or";
         case TOKEN_NOT:         return "not";
+        case TOKEN_IN:          return "in";  
         
-        // Assignment
+        
         case TOKEN_EQUAL:       return "=";
         case TOKEN_PLUS_EQUAL:  return "+=";
         case TOKEN_MINUS_EQUAL: return "-=";
@@ -91,7 +92,6 @@ const char* getOpSymbol(TokenType op) {
     }
 }
 
-// Helper to convert type hint to actual data type
 const char* getTypeHintName(TokenType type) {
     switch (type) {
         case TOKEN_HINT_INT:   return "int";
@@ -363,6 +363,25 @@ ASTNode* createListLiteral(ASTNodeList* elements, int line) {
     return node;
 }
 
+ASTNode* createCastExpr(ASTNode* expr, TokenType targetType, int line) {
+    ASTNode* node = (ASTNode*)malloc(sizeof(ASTNode));
+    if (!node) return NULL;
+    node->type = AST_CAST_EXPR;
+    node->line = line;
+    node->data.castExpr.expression = expr;
+    node->data.castExpr.targetType = targetType;
+    return node;
+}
+
+ASTNode* createInputExpr(char* prompt, int line) {
+    ASTNode* node = (ASTNode*)malloc(sizeof(ASTNode));
+    if (!node) return NULL;
+    node->type = AST_INPUT_EXPR;
+    node->line = line;
+    node->data.inputExpr.prompt = prompt ? dupString(prompt) : NULL;
+    return node;
+}
+
 ASTNode* createTypeHint(TokenType hintType, int line) {
     ASTNode* node = (ASTNode*)malloc(sizeof(ASTNode));
     if (!node) return NULL;
@@ -495,6 +514,14 @@ void freeAST(ASTNode* node) {
             freeNodeList(node->data.listLiteral.elements);
             break;
             
+        case AST_CAST_EXPR:
+            freeAST(node->data.castExpr.expression);
+            break;
+            
+        case AST_INPUT_EXPR:
+            free(node->data.inputExpr.prompt);
+            break;
+            
         case AST_PARAM_LIST:
         case AST_ARG_LIST:
             freeNodeList(node->data.list.items);
@@ -507,11 +534,17 @@ void freeAST(ASTNode* node) {
     free(node);
 }
 
-// ===== AST Visualization (for debugging) =====
+// ===== AST Visualization =====
 
 static void printIndent(int indent) {
     for (int i = 0; i < indent; i++) {
         printf("  ");
+    }
+}
+
+static void printIndentToFile(int indent, FILE* file) {
+    for (int i = 0; i < indent; i++) {
+        fprintf(file, "  ");
     }
 }
 
@@ -540,12 +573,10 @@ void printAST(ASTNode* node, int indent) {
 
         case AST_IMPORT_STMT:
             if (node->data.importStmt.fromModule) {
-                // "from X import Y"
                 printf("IMPORT %s FROM %s\n", 
                        node->data.importStmt.moduleName, 
                        node->data.importStmt.fromModule);
             } else {
-                // "import X"
                 printf("IMPORT %s\n", node->data.importStmt.moduleName);
             }
             break;
@@ -598,26 +629,22 @@ void printAST(ASTNode* node, int indent) {
         case AST_IDENTIFIER:
             printf("IDENTIFIER %s\n", node->data.identifier.name);
             break;
-        // [In ast.c, inside printAST function switch statement]
 
         case AST_FUNCTION_DECL:
             printf("FUNCTION_DECL %s\n", node->data.funcDecl.name);
             
-            // Print Parameters
             if (node->data.funcDecl.params) {
                 printIndent(indent + 1);
                 printf("PARAMS\n");
                 printAST(node->data.funcDecl.params, indent + 2);
             }
             
-            // Print Return Type
             if (node->data.funcDecl.returnType) {
                 printIndent(indent + 1);
                 printf("RETURN TYPE\n");
                 printAST(node->data.funcDecl.returnType, indent + 2);
             }
             
-            // Print Function Body
             if (node->data.funcDecl.body) {
                 printIndent(indent + 1);
                 printf("BODY\n");
@@ -643,11 +670,9 @@ void printAST(ASTNode* node, int indent) {
             break;
 
         case AST_TYPE_HINT:
-            // Uses the helper function to print actual data type instead of number
             printf("TYPE_HINT %s\n", getTypeHintName(node->data.typeHint.hintType));
             break;
 
-        // Handle For Loops
         case AST_FOR_STMT:
             printf("FOR LOOP (Iterator: %s)\n", node->data.forStmt.iterVar);
             
@@ -664,7 +689,6 @@ void printAST(ASTNode* node, int indent) {
             }
             break;
 
-        // Handle List Literals
         case AST_LIST_LITERAL:
             printf("LIST LITERAL\n");
             if (node->data.listLiteral.elements) {
@@ -674,7 +698,6 @@ void printAST(ASTNode* node, int indent) {
             }
             break;
 
-        // Handle Output Statements
         case AST_OUTPUT_STMT:
             printf("OUTPUT\n");
             if (node->data.outputStmt.expressions) {
@@ -684,7 +707,6 @@ void printAST(ASTNode* node, int indent) {
             }
             break;
 
-        // Handle If/When Statements
         case AST_IF_STMT:
             printf("WHEN STMT\n");
             printIndent(indent + 1);
@@ -758,7 +780,6 @@ void printAST(ASTNode* node, int indent) {
             break;
 
         case AST_ARG_LIST:
-            // Assuming this is used for arguments
             if (node->data.list.items) {
                 for (int i = 0; i < node->data.list.items->count; i++) {
                     printAST(node->data.list.items->nodes[i], indent);
@@ -766,8 +787,281 @@ void printAST(ASTNode* node, int indent) {
             }
             break;
 
+        case AST_CAST_EXPR:
+            printf("CAST_EXPR to %s\n", getTypeHintName(node->data.castExpr.targetType));
+            printAST(node->data.castExpr.expression, indent + 1);
+            break;
+
+        case AST_INPUT_EXPR:
+            printf("INPUT_EXPR");
+            if (node->data.inputExpr.prompt) {
+                printf(" (prompt: \"%s\")", node->data.inputExpr.prompt);
+            }
+            printf("\n");
+            break;
+
         default:
             printf("NODE_TYPE_%d\n", node->type);
+            break;
+    }
+}
+
+void printASTToFile(ASTNode* node, int indent, FILE* file) {
+    if (!file) return;
+    
+    if (!node) {
+        printIndentToFile(indent, file);
+        fprintf(file, "(null)\n");
+        return;
+    }
+    
+    printIndentToFile(indent, file);
+    
+    switch (node->type) {
+        case AST_PROGRAM:
+            fprintf(file, "PROGRAM\n");
+            if (node->data.program.statements) {
+                for (int i = 0; i < node->data.program.statements->count; i++) {
+                    printASTToFile(node->data.program.statements->nodes[i], indent + 1, file);
+                }
+            }
+            break;
+
+        case AST_CONTINUE_STMT:
+            fprintf(file, "CONTINUE\n");
+            break;
+
+        case AST_IMPORT_STMT:
+            if (node->data.importStmt.fromModule) {
+                fprintf(file, "IMPORT %s FROM %s\n", 
+                       node->data.importStmt.moduleName, 
+                       node->data.importStmt.fromModule);
+            } else {
+                fprintf(file, "IMPORT %s\n", node->data.importStmt.moduleName);
+            }
+            break;
+        
+        case AST_BREAK_STMT:
+            fprintf(file, "BREAK\n");
+            break;
+
+        case AST_VAR_DECL:
+            fprintf(file, "VAR_DECL (%s) %s\n", 
+                   node->data.varDecl.isMutable ? "flex" : "fixed",
+                   node->data.varDecl.name);
+            if (node->data.varDecl.typeHint) {
+                printASTToFile(node->data.varDecl.typeHint, indent + 1, file);
+            }
+            if (node->data.varDecl.initializer) {
+                printASTToFile(node->data.varDecl.initializer, indent + 1, file);
+            }
+            break;
+            
+        case AST_ASSIGNMENT:
+            fprintf(file, "ASSIGNMENT %s =\n", node->data.assignment.varName);
+            printASTToFile(node->data.assignment.value, indent + 1, file);
+            break;
+            
+        case AST_BINARY_OP:
+            fprintf(file, "BINARY_OP\n");
+            printASTToFile(node->data.binaryOp.left, indent + 1, file);
+            printIndentToFile(indent + 1, file);
+            fprintf(file, "OP: %s\n", getOpSymbol(node->data.binaryOp.op));
+            printASTToFile(node->data.binaryOp.right, indent + 1, file);
+            break;
+            
+        case AST_LITERAL:
+            fprintf(file, "LITERAL ");
+            if (node->data.literal.literalType == TOKEN_INTEGER) {
+                fprintf(file, "(int) %lld\n", node->data.literal.value.intValue);
+            } else if (node->data.literal.literalType == TOKEN_FLOAT) {
+                fprintf(file, "(float) %f\n", node->data.literal.value.floatValue);
+            } else if (node->data.literal.literalType == TOKEN_STRING) {
+                fprintf(file, "(string) \"%s\"\n", node->data.literal.value.stringValue);
+            } else if (node->data.literal.literalType == TOKEN_CHAR) {
+                fprintf(file, "(char) '%c'\n", node->data.literal.value.charValue);
+            } else if (node->data.literal.literalType == TOKEN_TRUE || 
+                       node->data.literal.literalType == TOKEN_FALSE) {
+                fprintf(file, "(bool) %s\n", node->data.literal.value.boolValue ? "true" : "false");
+            }
+            break;
+            
+        case AST_IDENTIFIER:
+            fprintf(file, "IDENTIFIER %s\n", node->data.identifier.name);
+            break;
+
+        case AST_FUNCTION_DECL:
+            fprintf(file, "FUNCTION_DECL %s\n", node->data.funcDecl.name);
+            
+            if (node->data.funcDecl.params) {
+                printIndentToFile(indent + 1, file);
+                fprintf(file, "PARAMS\n");
+                printASTToFile(node->data.funcDecl.params, indent + 2, file);
+            }
+            
+            if (node->data.funcDecl.returnType) {
+                printIndentToFile(indent + 1, file);
+                fprintf(file, "RETURN TYPE\n");
+                printASTToFile(node->data.funcDecl.returnType, indent + 2, file);
+            }
+            
+            if (node->data.funcDecl.body) {
+                printIndentToFile(indent + 1, file);
+                fprintf(file, "BODY\n");
+                for (int i = 0; i < node->data.funcDecl.body->count; i++) {
+                    printASTToFile(node->data.funcDecl.body->nodes[i], indent + 2, file);
+                }
+            }
+            break;
+
+        case AST_PARAM_LIST:
+            if (node->data.list.items) {
+                for (int i = 0; i < node->data.list.items->count; i++) {
+                    printASTToFile(node->data.list.items->nodes[i], indent, file);
+                }
+            }
+            break;
+
+        case AST_RETURN_STMT:
+            fprintf(file, "RETURN\n");
+            if (node->data.returnStmt.value) {
+                printASTToFile(node->data.returnStmt.value, indent + 1, file);
+            }
+            break;
+
+        case AST_TYPE_HINT:
+            fprintf(file, "TYPE_HINT %s\n", getTypeHintName(node->data.typeHint.hintType));
+            break;
+
+        case AST_FOR_STMT:
+            fprintf(file, "FOR LOOP (Iterator: %s)\n", node->data.forStmt.iterVar);
+            
+            printIndentToFile(indent + 1, file);
+            fprintf(file, "ITERABLE\n");
+            printASTToFile(node->data.forStmt.iterable, indent + 2, file);
+            
+            printIndentToFile(indent + 1, file);
+            fprintf(file, "BODY\n");
+            if (node->data.forStmt.body) {
+                for (int i = 0; i < node->data.forStmt.body->count; i++) {
+                    printASTToFile(node->data.forStmt.body->nodes[i], indent + 2, file);
+                }
+            }
+            break;
+
+        case AST_LIST_LITERAL:
+            fprintf(file, "LIST LITERAL\n");
+            if (node->data.listLiteral.elements) {
+                for (int i = 0; i < node->data.listLiteral.elements->count; i++) {
+                    printASTToFile(node->data.listLiteral.elements->nodes[i], indent + 1, file);
+                }
+            }
+            break;
+
+        case AST_OUTPUT_STMT:
+            fprintf(file, "OUTPUT\n");
+            if (node->data.outputStmt.expressions) {
+                for (int i = 0; i < node->data.outputStmt.expressions->count; i++) {
+                    printASTToFile(node->data.outputStmt.expressions->nodes[i], indent + 1, file);
+                }
+            }
+            break;
+
+        case AST_IF_STMT:
+            fprintf(file, "WHEN STMT\n");
+            printIndentToFile(indent + 1, file);
+            fprintf(file, "CONDITION\n");
+            printASTToFile(node->data.ifStmt.condition, indent + 2, file);
+            
+            printIndentToFile(indent + 1, file);
+            fprintf(file, "THEN\n");
+            if (node->data.ifStmt.thenBranch) {
+                for (int i = 0; i < node->data.ifStmt.thenBranch->count; i++) {
+                    printASTToFile(node->data.ifStmt.thenBranch->nodes[i], indent + 2, file);
+                }
+            }
+            if (node->data.ifStmt.elseBranch) {
+                printIndentToFile(indent + 1, file);
+                fprintf(file, "ELSE\n");
+                for (int i = 0; i < node->data.ifStmt.elseBranch->count; i++) {
+                    printASTToFile(node->data.ifStmt.elseBranch->nodes[i], indent + 2, file);
+                }
+            }
+            break;
+
+        case AST_COMPOUND_ASSIGN:
+            fprintf(file, "COMPOUND_ASSIGN %s %s\n", 
+                   node->data.compoundAssign.varName,
+                   getOpSymbol(node->data.compoundAssign.op));
+            printASTToFile(node->data.compoundAssign.value, indent + 1, file);
+            break;
+
+        case AST_INPUT_STMT:
+            fprintf(file, "INPUT %s\n", node->data.inputStmt.varName);
+            if (node->data.inputStmt.prompt) {
+                printIndentToFile(indent + 1, file);
+                fprintf(file, "PROMPT: \"%s\"\n", node->data.inputStmt.prompt);
+            }
+            break;
+
+        case AST_WHILE_STMT:
+            fprintf(file, "WHILE LOOP\n");
+            printIndentToFile(indent + 1, file);
+            fprintf(file, "CONDITION\n");
+            printASTToFile(node->data.whileStmt.condition, indent + 2, file);
+            printIndentToFile(indent + 1, file);
+            fprintf(file, "BODY\n");
+            if (node->data.whileStmt.body) {
+                for (int i = 0; i < node->data.whileStmt.body->count; i++) {
+                    printASTToFile(node->data.whileStmt.body->nodes[i], indent + 2, file);
+                }
+            }
+            break;
+
+        case AST_EXPR_STMT:
+            printASTToFile(node->data.exprStmt.expression, indent, file);
+            break;
+
+        case AST_UNARY_OP:
+            fprintf(file, "UNARY_OP %s\n", getOpSymbol(node->data.unaryOp.op));
+            printASTToFile(node->data.unaryOp.operand, indent + 1, file);
+            break;
+
+        case AST_CALL_EXPR:
+            fprintf(file, "CALL %s\n", node->data.callExpr.funcName);
+            printASTToFile(node->data.callExpr.args, indent + 1, file);
+            break;
+
+        case AST_INDEX_EXPR:
+            fprintf(file, "INDEX_EXPR %s\n", node->data.indexExpr.varName);
+            printIndentToFile(indent + 1, file);
+            fprintf(file, "INDEX\n");
+            printASTToFile(node->data.indexExpr.index, indent + 2, file);
+            break;
+
+        case AST_ARG_LIST:
+            if (node->data.list.items) {
+                for (int i = 0; i < node->data.list.items->count; i++) {
+                    printASTToFile(node->data.list.items->nodes[i], indent, file);
+                }
+            }
+            break;
+
+        case AST_CAST_EXPR:
+            fprintf(file, "CAST_EXPR to %s\n", getTypeHintName(node->data.castExpr.targetType));
+            printASTToFile(node->data.castExpr.expression, indent + 1, file);
+            break;
+
+        case AST_INPUT_EXPR:
+            fprintf(file, "INPUT_EXPR");
+            if (node->data.inputExpr.prompt) {
+                fprintf(file, " (prompt: \"%s\")", node->data.inputExpr.prompt);
+            }
+            fprintf(file, "\n");
+            break;
+
+        default:
+            fprintf(file, "NODE_TYPE_%d\n", node->type);
             break;
     }
 }
